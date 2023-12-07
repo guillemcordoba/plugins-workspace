@@ -13,6 +13,10 @@ pub enum Error {
     #[cfg(mobile)]
     #[error(transparent)]
     PluginInvoke(#[from] tauri::plugin::mobile::PluginInvokeError),
+    #[error(transparent)]
+    Path(#[from] tauri::path::Error),
+    #[error(transparent)]
+    Serialization(#[from] serde_json::Error),
 }
 
 impl Serialize for Error {

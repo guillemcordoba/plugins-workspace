@@ -57,6 +57,7 @@ class TauriNotificationManager(
     Logger.debug(Logger.tags("Notification"), "Notification received: " + data.dataString)
     val notificationId =
       data.getIntExtra(NOTIFICATION_INTENT_KEY, Int.MIN_VALUE)
+    Logger.debug(Logger.tags("Notification"), "Notification received: " + notificationId)
     if (notificationId == Int.MIN_VALUE) {
       Logger.debug(Logger.tags("Notification"), "Activity started without notification attached")
       return null
@@ -72,6 +73,7 @@ class TauriNotificationManager(
     dataJson.put("inputValue", input?.toString())
     val menuAction = data.getStringExtra(ACTION_INTENT_KEY)
     dismissVisibleNotification(notificationId)
+    dataJson.put("notificationId", notificationId)
     dataJson.put("actionId", menuAction)
     var request: JSONObject? = null
     try {

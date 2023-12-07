@@ -21,16 +21,18 @@ use tauri::{
     Manager, Runtime,
 };
 
-pub use models::*;
+pub use tauri_plugin_notification_models::*;
 
 #[cfg(desktop)]
 mod desktop;
 #[cfg(mobile)]
 mod mobile;
+#[cfg(mobile)]
+pub use mobile::NotificationActionPerformedPayload;
+pub use tauri_plugin_notification_macros::fetch_pending_notifications;
 
 mod commands;
 mod error;
-mod models;
 
 pub use error::{Error, Result};
 

@@ -2,15 +2,32 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-use serde::{de::DeserializeOwned, Deserialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tauri::{
+    ipc::{Channel as TauriChannel, InvokeBody},
     plugin::{PluginApi, PluginHandle},
-    AppHandle, Runtime,
+    AppHandle, Manager, Runtime,
 };
 
-use crate::models::*;
+use tauri_plugin_notification_models::*;
+
+use serde_json::Value;
 
 use std::collections::HashMap;
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegisterListenerArgs {
+    pub event: String,
+    pub handler: TauriChannel,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationActionPerformedPayload {
+    pub action_id: String,
+    pub notification: NotificationData,
+}
 
 #[cfg(target_os = "android")]
 const PLUGIN_IDENTIFIER: &str = "app.tauri.notification";
@@ -20,13 +37,31 @@ tauri::ios_plugin_binding!(init_plugin_notification);
 
 // initializes the Kotlin or Swift plugin classes
 pub fn init<R: Runtime, C: DeserializeOwned>(
-    _app: &AppHandle<R>,
+    app: &AppHandle<R>,
     api: PluginApi<R, C>,
 ) -> crate::Result<Notification<R>> {
     #[cfg(target_os = "android")]
     let handle = api.register_android_plugin(PLUGIN_IDENTIFIER, "NotificationPlugin")?;
     #[cfg(target_os = "ios")]
     let handle = api.register_ios_plugin(init_plugin_notification)?;
+    #[cfg(target_os = "android")]
+    {
+        let app_handle = app.clone();
+        handle.run_mobile_plugin::<()>(
+            "registerListener",
+            RegisterListenerArgs {
+                event: String::from("actionPerformed"),
+                handler: TauriChannel::new(move |event| {
+                    if let InvokeBody::Json(payload) = event {
+                        let n: NotificationActionPerformedPayload =
+                            serde_json::from_value(payload)?;
+                        app_handle.emit("notification-action-performed", n)?;
+                    };
+                    Ok(())
+                }),
+            },
+        )?;
+    }
     Ok(Notification(handle))
 }
 
@@ -45,6 +80,27 @@ pub struct Notification<R: Runtime>(PluginHandle<R>);
 impl<R: Runtime> Notification<R> {
     pub fn builder(&self) -> crate::NotificationBuilder<R> {
         crate::NotificationBuilder::new(self.0.clone())
+    }
+
+    pub fn get_launching_notification(
+        &self,
+    ) -> crate::Result<Option<NotificationActionPerformedPayload>> {
+        let launching_notification = self
+            .0
+            .run_mobile_plugin::<Option<Value>>("getLaunchingNotification", ())?;
+        match launching_notification {
+            Some(notification) => {
+                println!("HI {notification:?}");
+                if let Some(_) = notification.get("notification") {
+                    let notification: NotificationActionPerformedPayload =
+                        serde_json::from_value(notification)?;
+                    return Ok(Some(notification));
+                } else {
+                    return Ok(None);
+                }
+            }
+            None => Ok(None),
+        }
     }
 
     pub fn request_permission(&self) -> crate::Result<PermissionState> {

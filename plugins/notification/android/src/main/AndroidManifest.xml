@@ -1,6 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application>
+        <service
+            android:name=".PushNotificationsService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+            </intent-filter>
+        </service>
+
         <receiver android:name="app.tauri.notification.TimedNotificationPublisher" />
         <receiver android:name="app.tauri.notification.NotificationDismissReceiver" />
         <receiver

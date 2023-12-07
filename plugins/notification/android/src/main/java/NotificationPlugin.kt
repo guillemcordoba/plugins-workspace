@@ -22,6 +22,7 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSArray
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
+import app.tauri.Logger
 
 const val LOCAL_NOTIFICATIONS = "permissionState"
 
@@ -82,6 +83,7 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   private lateinit var notificationManager: NotificationManager
   private lateinit var notificationStorage: NotificationStorage
   private var channelManager = ChannelManager(activity)
+  private var launchingNotification: JSObject? = null
 
   companion object {
     var instance: NotificationPlugin? = null
@@ -122,18 +124,26 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   }
 
   fun onIntent(intent: Intent) {
+    Logger.error(Logger.tags("Notification"), "on intent", null)
     if (Intent.ACTION_MAIN != intent.action) {
       return
     }
     val dataJson = manager.handleNotificationActionPerformed(intent, notificationStorage)
     if (dataJson != null) {
       trigger("actionPerformed", dataJson)
+      this.launchingNotification = dataJson
     }
+  }
+
+  @Command
+  fun getLaunchingNotification(invoke: Invoke) {
+    invoke.resolve(this.launchingNotification)
   }
 
   @Command
   fun show(invoke: Invoke) {
     val notification = invoke.parseArgs(Notification::class.java)
+    notification.sourceJson = jsonMapper().writeValueAsString(notification)
     val id = manager.schedule(notification)
 
     invoke.resolveObject(id)

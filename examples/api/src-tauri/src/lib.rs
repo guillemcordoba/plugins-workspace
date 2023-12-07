@@ -6,6 +6,8 @@ mod cmd;
 #[cfg(desktop)]
 mod tray;
 
+use std::collections::HashMap;
+
 use serde::Serialize;
 use tauri::{window::WindowBuilder, App, AppHandle, Manager, RunEvent, WindowUrl};
 
@@ -103,6 +105,19 @@ pub fn run() {
                 }
             });
 
+            app.listen_global("notification-action-performed", |event| {
+                if let Ok(notification_action_performed_payload) = serde_json::from_str::<
+                    tauri_plugin_notification::NotificationActionPerformedPayload,
+                >(event.payload())
+                {
+                    println!("{notification_action_performed_payload:?}");
+                }
+            });
+
+            #[cfg(mobile)]
+            if let Some(launching_notification) = app.notification().get_launching_notification()? {
+                println!("setup {launching_notification:?}");
+            }
             Ok(())
         })
         .on_page_load(|window, _| {
@@ -144,4 +159,18 @@ pub fn run() {
             api.prevent_exit();
         }
     })
+}
+
+use jni::objects::JClass;
+use jni::JNIEnv;
+use tauri_plugin_notification::NotificationExt;
+
+#[tauri_plugin_notification::fetch_pending_notifications]
+pub fn fetch_pending_notifications() -> Vec<tauri_plugin_notification::NotificationData> {
+    let mut n = tauri_plugin_notification::NotificationData::default();
+    n.id = 333;
+    n.title = Some(String::from("AAA"));
+    // let mut extra: HashMap<String, Value> = HashMap::new();
+    // n.extra = extra;
+    vec![n]
 }
