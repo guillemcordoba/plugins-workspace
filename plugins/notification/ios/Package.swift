@@ -10,7 +10,7 @@ import PackageDescription
 let package = Package(
     name: "tauri-plugin-notification",
     platforms: [
-        .iOS(.v13),
+		.iOS(.v11),
     ],
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
@@ -20,7 +20,8 @@ let package = Package(
             targets: ["tauri-plugin-notification"]),
     ],
     dependencies: [
-        .package(name: "Tauri", path: "../.tauri/tauri-api")
+        .package(name: "Tauri", path: "../.tauri/tauri-api"),
+        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", from: "10.19.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
@@ -28,7 +29,8 @@ let package = Package(
         .target(
             name: "tauri-plugin-notification",
             dependencies: [
-                .byName(name: "Tauri")
+                .byName(name: "Tauri"),
+                .product(name: "FirebaseMessaging", package: "Firebase"),
             ],
             path: "Sources")
     ]

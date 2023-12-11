@@ -118,6 +118,8 @@ pub fn run() {
             if let Some(launching_notification) = app.notification().get_launching_notification()? {
                 println!("setup {launching_notification:?}");
             }
+            #[cfg(mobile)]
+            app.notification().register_for_push_notifications()?;
             Ok(())
         })
         .on_page_load(|window, _| {

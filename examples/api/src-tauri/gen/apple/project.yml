@@ -1,6 +1,6 @@
-name: api
+name: pushnotifications
 options:
-  bundleIdPrefix: com.tauri
+  bundleIdPrefix: studio.darksoil
   deploymentTarget:
     iOS: 13.0
 fileGroups: [../../src]
@@ -11,8 +11,8 @@ settingGroups:
   app:
     base:
       PRODUCT_NAME: Tauri API
-      PRODUCT_BUNDLE_IDENTIFIER: com.tauri.api
-      DEVELOPMENT_TEAM: Q93MBH6S2F
+      PRODUCT_BUNDLE_IDENTIFIER: studio.darksoil.pushnotifications
+      DEVELOPMENT_TEAM: 4XN3VLHC68
 targetTemplates:
   app:
     type: application
@@ -25,19 +25,19 @@ targetTemplates:
     settings:
       groups: [app]
 targets:
-  api_iOS:
+  pushnotifications_iOS:
     type: application
     platform: iOS
     sources:
       - path: Sources
       - path: Assets.xcassets
       - path: Externals
-      - path: api_iOS
+      - path: pushnotifications_iOS
       - path: assets
         buildPhase: resources
         type: folder
     info:
-      path: api_iOS/Info.plist
+      path: pushnotifications_iOS/Info.plist
       properties:
         LSRequiresIPhoneOS: true
         UILaunchStoryboardName: LaunchScreen
@@ -54,7 +54,7 @@ targets:
         CFBundleShortVersionString: 2.0.0
         CFBundleVersion: 2.0.0
     entitlements:
-      path: api_iOS/api_iOS.entitlements
+      path: pushnotifications_iOS/pushnotifications_iOS.entitlements
     scheme:
       environmentVariables:
         RUST_BACKTRACE: full
@@ -70,7 +70,7 @@ targets:
         ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: true
       groups: [app]
     dependencies:
-      - framework: libapi.a
+      - framework: libpushnotifications.a
         embed: false
       - sdk: CoreGraphics.framework
       - sdk: Metal.framework
@@ -80,9 +80,9 @@ targets:
       - sdk: UIKit.framework
       - sdk: WebKit.framework
     preBuildScripts:
-      - script: node ../../../node_modules/.bin/../@tauri-apps/cli/tauri.js ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths "${FRAMEWORK_SEARCH_PATHS:?}" --header-search-paths "${HEADER_SEARCH_PATHS:?}" --gcc-preprocessor-definitions "${GCC_PREPROCESSOR_DEFINITIONS:-}" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}
+      - script: npm run tauri -- ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths "${FRAMEWORK_SEARCH_PATHS:?}" --header-search-paths "${HEADER_SEARCH_PATHS:?}" --gcc-preprocessor-definitions "${GCC_PREPROCESSOR_DEFINITIONS:-}" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}
         name: Build Rust Code
         basedOnDependencyAnalysis: false
         outputFiles:
-          - $(SRCROOT)/target/aarch64-apple-ios/${CONFIGURATION}/deps/libapi.a
-          - $(SRCROOT)/target/x86_64-apple-ios/${CONFIGURATION}/deps/libapi.a
+          - $(SRCROOT)/target/aarch64-apple-ios/${CONFIGURATION}/deps/libpushnotifications.a
+          - $(SRCROOT)/target/x86_64-apple-ios/${CONFIGURATION}/deps/libpushnotifications.a

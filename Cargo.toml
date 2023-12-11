@@ -28,3 +28,7 @@ codegen-units = 1
 lto = true
 incremental = false
 opt-level = "s"
+
+[patch.crates-io]
+swift-rs = { git = "https://github.com/guillemcordoba/swift-rs", branch = "main" }
+tao  = { path = "../tao" }

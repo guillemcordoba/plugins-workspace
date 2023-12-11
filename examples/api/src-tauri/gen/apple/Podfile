@@ -1,13 +1,13 @@
 # Uncomment the next line to define a global platform for your project
 
-target 'api_iOS' do
+target 'pushnotifications_iOS' do
 platform :ios, '13.0'
-  # Pods for api_iOS
+  # Pods for pushnotifications_iOS
 end
 
-target 'api_macOS' do
+target 'pushnotifications_macOS' do
 platform :osx, '11.0'
-  # Pods for api_macOS
+  # Pods for pushnotifications_macOS
 end
 
 # Delete the deployment target for iOS and macOS, causing it to be inherited from the Podfile

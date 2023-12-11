@@ -103,6 +103,13 @@ impl<R: Runtime> Notification<R> {
         }
     }
 
+    pub fn register_for_push_notifications(&self) -> crate::Result<()> {
+        self.0
+            .run_mobile_plugin::<()>("registerForPushNotifications", ())
+            .map(|_| ())
+            .map_err(Into::into)
+    }
+
     pub fn request_permission(&self) -> crate::Result<PermissionState> {
         self.0
             .run_mobile_plugin::<PermissionResponse>("requestPermissions", ())

@@ -1,5 +1,5 @@
 [package]
-name = "api"
+name = "pushnotifications"
 publish = false
 version = "2.0.0-alpha.7"
 description = "An example Tauri Application showcasing the api"
@@ -8,7 +8,7 @@ rust-version = { workspace = true }
 license = "Apache-2.0 OR MIT"
 
 [lib]
-name = "api_lib"
+name = "pushnotifications"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

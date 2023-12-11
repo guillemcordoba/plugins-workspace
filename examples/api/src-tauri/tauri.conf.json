@@ -97,7 +97,7 @@
     "macOSPrivateApi": true,
     "bundle": {
       "active": true,
-      "identifier": "com.tauri.api",
+      "identifier": "studio.darksoil.pushnotifications",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",

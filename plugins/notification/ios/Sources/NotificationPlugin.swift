@@ -7,6 +7,8 @@ import Tauri
 import UIKit
 import UserNotifications
 import WebKit
+import FirebaseMessaging
+import FirebaseCore
 
 enum ShowNotificationError: LocalizedError {
   case make(Error)
@@ -153,7 +155,12 @@ struct BatchArgs: Decodable {
   let notifications: [Notification]
 }
 
-class NotificationPlugin: Plugin {
+protocol CustomAppDelegate {
+  func application(application: UIApplication,
+                 didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data)
+}
+ 
+class NotificationPlugin: Plugin, MessagingDelegate, UNUserNotificationCenterDelegate, UIApplicationDelegate {
   let notificationHandler = NotificationHandler()
   let notificationManager = NotificationManager()
 
@@ -161,6 +168,54 @@ class NotificationPlugin: Plugin {
     super.init()
     notificationManager.notificationHandler = notificationHandler
     notificationHandler.plugin = self
+  }
+
+  func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+    Logger.info("Firebase registration token: \(String(describing: fcmToken))")
+    print("AAA")
+
+    // TODO: If necessary send token to application server.
+    // Note: This callback is fired at each app startup and whenever a new token is generated.
+  }
+      
+  @objc func didRegisterWithToken(notification: NSNotification) {
+            Logger.info("eeeeee1")
+
+    guard let deviceToken = notification.object as? Data else {
+      return
+    }
+        Logger.info("eeeeee2")
+
+    Messaging.messaging().apnsToken = deviceToken
+  }
+
+
+  @objc public func registerForPushNotifications(_ invoke: Invoke) throws {
+    NotificationCenter.default.addObserver(self, selector: #selector(self.didRegisterWithToken(notification:)), name: NSNotification.Name("fcmRegisterToken"), object: nil)
+
+    Logger.info("aaaaaa")
+    Messaging.messaging().delegate = self
+
+    UNUserNotificationCenter.current().delegate = self
+
+    let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+    UNUserNotificationCenter.current().requestAuthorization(
+      options: authOptions,
+      completionHandler: { _, _ in }
+    )
+ 
+    DispatchQueue.main.async {
+      UIApplication.shared.registerForRemoteNotifications()
+    }
+    invoke.resolve()
+  }
+
+  @objc public func getFCMToken(_ invoke: Invoke) throws {
+    invoke.resolve()
+  }
+
+  @objc public func getLaunchingNotification(_ invoke: Invoke) throws {
+    invoke.resolve()
   }
 
   @objc public func show(_ invoke: Invoke) throws {
@@ -281,5 +336,10 @@ class NotificationPlugin: Plugin {
 
 @_cdecl("init_plugin_notification")
 func initPlugin() -> Plugin {
+  FirebaseApp.configure()
   return NotificationPlugin()
+}
+
+public extension NSNotification {
+    public static let fcmRegisterToken: NSString = "fcmRegisterToken"
 }
