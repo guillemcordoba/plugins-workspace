@@ -7,6 +7,7 @@ mod cmd;
 mod tray;
 
 use std::collections::HashMap;
+use std::fmt::format;
 use std::thread::Thread;
 use std::time::Duration;
 
@@ -182,4 +183,9 @@ pub fn fetch_pending_notifications() -> Vec<tauri_plugin_notification::Notificat
     // let mut extra: HashMap<String, Value> = HashMap::new();
     // n.extra = extra;
     vec![n]
+}
+
+#[no_mangle]
+pub extern "C" fn modify_notification() -> String {
+    format!("aaaaa")
 }
