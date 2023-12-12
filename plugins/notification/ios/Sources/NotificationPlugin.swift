@@ -160,9 +160,11 @@ protocol CustomAppDelegate {
                  didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data)
 }
  
-class NotificationPlugin: Plugin, MessagingDelegate, UNUserNotificationCenterDelegate, UIApplicationDelegate {
+class NotificationPlugin: Plugin, MessagingDelegate {
   let notificationHandler = NotificationHandler()
   let notificationManager = NotificationManager()
+  var fcmToken: String?
+  var registerInvoke: Invoke?
 
   override init() {
     super.init()
@@ -173,6 +175,13 @@ class NotificationPlugin: Plugin, MessagingDelegate, UNUserNotificationCenterDel
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
     Logger.info("Firebase registration token: \(String(describing: fcmToken))")
     print("AAA")
+    if let invoke = self.registerInvoke {
+    invoke.resolve(fcmToken)
+    self.registerInvoke = nil
+
+    }
+
+    self.fcmToken = fcmToken
 
     // TODO: If necessary send token to application server.
     // Note: This callback is fired at each app startup and whenever a new token is generated.
@@ -180,38 +189,58 @@ class NotificationPlugin: Plugin, MessagingDelegate, UNUserNotificationCenterDel
       
   @objc func didRegisterWithToken(notification: NSNotification) {
             Logger.info("eeeeee1")
+            print("eeee")
 
     guard let deviceToken = notification.object as? Data else {
       return
     }
-        Logger.info("eeeeee2")
+        Logger.info("eeeeee2", deviceToken)
 
     Messaging.messaging().apnsToken = deviceToken
   }
 
+  @objc func failedToRegisterWithToken(notification: NSNotification) {
+    guard let error = notification.object as? Error else {
+      return
+    }
+    if let invoke = self.registerInvoke {
+    invoke.reject(error.localizedDescription)
+    self.registerInvoke = nil
+    }
+  }
+
 
   @objc public func registerForPushNotifications(_ invoke: Invoke) throws {
-    NotificationCenter.default.addObserver(self, selector: #selector(self.didRegisterWithToken(notification:)), name: NSNotification.Name("fcmRegisterToken"), object: nil)
-
+    NotificationCenter.default.addObserver(self, selector: #selector(self.didRegisterWithToken(notification:)), name: NSNotification.Name("didRegisterApnToken"), object: nil)
+    NotificationCenter.default.addObserver(self, selector: #selector(self.failedToRegisterWithToken(notification:)), name: NSNotification.Name("failedToRegisterApnToken"), object: nil)
     Logger.info("aaaaaa")
-    Messaging.messaging().delegate = self
+      FirebaseApp.configure()
+    Logger.info("aaaaaa1")
 
-    UNUserNotificationCenter.current().delegate = self
-
-    let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-    UNUserNotificationCenter.current().requestAuthorization(
-      options: authOptions,
-      completionHandler: { _, _ in }
-    )
- 
     DispatchQueue.main.async {
+
+    UNUserNotificationCenter.current().delegate = self.notificationManager
+        Logger.info("aaaaaa2")
+let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+UNUserNotificationCenter.current().requestAuthorization(
+  options: authOptions,
+  completionHandler: { _, _ in }
+)
+
+                Logger.info("aaaaaa4")
+
+    Messaging.messaging().delegate = self
+            Logger.info("aaaaaa5")
+
+
       UIApplication.shared.registerForRemoteNotifications()
     }
-    invoke.resolve()
+    self.registerInvoke = invoke
   }
 
   @objc public func getFCMToken(_ invoke: Invoke) throws {
-    invoke.resolve()
+        Logger.info("bbbbbbb", self.fcmToken)
+    invoke.resolve(self.fcmToken)
   }
 
   @objc public func getLaunchingNotification(_ invoke: Invoke) throws {
@@ -336,7 +365,6 @@ class NotificationPlugin: Plugin, MessagingDelegate, UNUserNotificationCenterDel
 
 @_cdecl("init_plugin_notification")
 func initPlugin() -> Plugin {
-  FirebaseApp.configure()
   return NotificationPlugin()
 }
 

@@ -24,12 +24,12 @@ import UserNotifications
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
-    var presentationOptions: UNNotificationPresentationOptions? = nil
+    var presentationOptions: UNNotificationPresentationOptions? = [.alert, .sound]
 
     if notification.request.trigger?.isKind(of: UNPushNotificationTrigger.self) != true {
       presentationOptions = notificationHandler?.willPresent(notification: notification)
-    }
-
+    } 
+  
     completionHandler(presentationOptions ?? [])
   }
 

@@ -103,10 +103,15 @@ impl<R: Runtime> Notification<R> {
         }
     }
 
-    pub fn register_for_push_notifications(&self) -> crate::Result<()> {
+    pub fn register_for_push_notifications(&self) -> crate::Result<String> {
         self.0
-            .run_mobile_plugin::<()>("registerForPushNotifications", ())
-            .map(|_| ())
+            .run_mobile_plugin::<String>("registerForPushNotifications", ())
+            .map_err(Into::into)
+    }
+
+    pub fn get_fcm_token(&self) -> crate::Result<String> {
+        self.0
+            .run_mobile_plugin::<String>("getFCMToken", ())
             .map_err(Into::into)
     }
 

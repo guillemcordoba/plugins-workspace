@@ -7,6 +7,8 @@ mod cmd;
 mod tray;
 
 use std::collections::HashMap;
+use std::thread::Thread;
+use std::time::Duration;
 
 use serde::Serialize;
 use tauri::{window::WindowBuilder, App, AppHandle, Manager, RunEvent, WindowUrl};
@@ -118,8 +120,13 @@ pub fn run() {
             if let Some(launching_notification) = app.notification().get_launching_notification()? {
                 println!("setup {launching_notification:?}");
             }
+
+            let h = app.app_handle().clone();
             #[cfg(mobile)]
-            app.notification().register_for_push_notifications()?;
+            tauri::async_runtime::spawn(async move {
+                println!("aaaaaS {}", h.notification().register_for_push_notifications().unwrap());
+
+            });
             Ok(())
         })
         .on_page_load(|window, _| {
