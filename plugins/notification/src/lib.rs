@@ -29,7 +29,7 @@ mod desktop;
 mod mobile;
 #[cfg(mobile)]
 pub use mobile::NotificationActionPerformedPayload;
-pub use tauri_plugin_notification_macros::fetch_pending_notifications;
+pub use tauri_plugin_notification_macros::modify_push_notification;
 
 mod commands;
 mod error;

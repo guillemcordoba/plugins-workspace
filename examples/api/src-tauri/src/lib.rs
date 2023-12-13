@@ -108,26 +108,29 @@ pub fn run() {
                 }
             });
 
-            app.listen_global("notification-action-performed", |event| {
+            let h = app.app_handle().clone();
+            app.listen_global("notification-action-performed", move |event| {
                 if let Ok(notification_action_performed_payload) = serde_json::from_str::<
                     tauri_plugin_notification::NotificationActionPerformedPayload,
                 >(event.payload())
                 {
-                    println!("{notification_action_performed_payload:?}");
+                    h.notification().builder().title("NOTIFI").body(format!("uhhhh {notification_action_performed_payload:?}")).show().unwrap();
                 }
             });
 
-            #[cfg(mobile)]
-            if let Some(launching_notification) = app.notification().get_launching_notification()? {
-                println!("setup {launching_notification:?}");
+            app.listen_global("new-fcm-token", move |event| {
+                if let Ok(token) = serde_json::from_str::<
+                String
+            >(event.payload())
+            {
+                println!("new-fcm-token {:?}", token);
             }
 
-            let h = app.app_handle().clone();
-            #[cfg(mobile)]
-            tauri::async_runtime::spawn(async move {
-                println!("aaaaaS {}", h.notification().register_for_push_notifications().unwrap());
-
             });
+
+            #[cfg(mobile)]
+            app.notification().register_for_push_notifications().unwrap();
+
             Ok(())
         })
         .on_page_load(|window, _| {
@@ -175,72 +178,11 @@ use jni::objects::JClass;
 use jni::JNIEnv;
 use tauri_plugin_notification::{NotificationExt, NotificationData};
 
-#[tauri_plugin_notification::fetch_pending_notifications]
-pub fn modify_push_notification(mut notification: PushNotification) -> PushNotification {
-    std::thread::sleep(std::time::Duration::from_secs(5));
+#[tauri_plugin_notification::modify_push_notification]
+pub fn modify_push_notification(mut notification: NotificationData) -> NotificationData {
     //n.title = Some(String::from("AAA"));
-    notification.body = String::from("AAA");
+    notification.body = Some(String::from("AAA"));
     // let mut extra: HashMap<String, Value> = HashMap::new();
     // n.extra = extra;
     notification
-}
-
-#[repr(C)]
-pub struct RustByteSlice {
-    pub bytes: *const u8,
-    pub len: usize,
-}
-
-impl RustByteSlice {
-    fn as_str(&self) -> &str {
-        unsafe {
-            // from_utf8_unchecked is sound because we checked in the constructor
-            std::str::from_utf8_unchecked(std::slice::from_raw_parts(self.bytes, self.len))
-        }
-    }  
-}
-
-impl<'a> From<&'a str> for RustByteSlice {
-    fn from(s: &'a str) -> Self {
-        RustByteSlice{
-            bytes: s.as_ptr(),
-            len: s.len() as usize,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct PushNotification {
-    pub title: String,
-    pub body: String,
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn notification_destroy(data: *mut RustByteSlice) {
-    let _ = Box::from_raw(data);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn notification_title(data: *const PushNotification) -> RustByteSlice {
-    let named_data = &*data;
-    RustByteSlice::from(named_data.title.as_ref())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn notification_body(data: *const PushNotification) -> RustByteSlice {
-    let named_data = &*data;
-    RustByteSlice::from(named_data.body.as_ref())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn modify_notification(notification_str: RustByteSlice) -> *mut PushNotification {
-    let notification: PushNotification = serde_json::from_str(notification_str.as_str()).unwrap();
-
-    let new_notification = modify_push_notification(notification);
-
-   // let new_notification_str = serde_json::to_string(&new_notification).unwrap();
-    //let s = &*new_notification_str;
-    let boxed_data = Box::new(new_notification);
-    Box::into_raw(boxed_data)
 }

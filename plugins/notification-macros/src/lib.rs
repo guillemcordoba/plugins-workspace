@@ -3,7 +3,7 @@ use quote::quote;
 use syn::{parse_macro_input, ItemFn};
 
 #[proc_macro_attribute]
-pub fn fetch_pending_notifications(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn modify_push_notification(_args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemFn);
     let fn_name = input.sig.ident.clone();
 
@@ -13,9 +13,9 @@ pub fn fetch_pending_notifications(_args: TokenStream, input: TokenStream) -> To
             app_tauri,
             notification,
             PushNotificationsService,
-            fetchpendingnotifications,
+            modifypushnotification,
             [jni::objects::JObject<'local>],
-            jni::objects::JObjectArray<'local>,
+            jni::objects::JString<'local>,
             [#fn_name]
         );
 
@@ -44,38 +44,82 @@ pub fn fetch_pending_notifications(_args: TokenStream, input: TokenStream) -> To
         // }
 
         #[cfg(target_os = "android")]
-        unsafe fn fetchpendingnotifications<'local>(
+        unsafe fn modifypushnotification<'local>(
             mut env: jni::JNIEnv<'local>,
             class: jni::objects::JClass<'local>,
             jobject: jni::objects::JObject<'local>,
-            main: fn() -> Vec<tauri_plugin_notification::NotificationData>,
-        ) -> jni::objects::JObjectArray<'local> {
+            main: fn(tauri_plugin_notification::NotificationData) -> tauri_plugin_notification::NotificationData,
+            notification: jni::objects::JString<'local>
+        ) -> jni::objects::JString<'local> {
             // setup_android_log();
 
-            let pending_notifications = main();
+            let modified_notification = main();
 
-            let jstrings: Vec<jni::objects::JString> = pending_notifications
-                .into_iter()
-                .filter_map(|s| serde_json::to_value(s).ok())
-                .filter_map(|s| serde_json::to_string(&s).ok())
-                .map(|s| env.new_string(s.clone())) // Convert to JString (maybe)
-                .filter_map(Result::ok)
-                .collect();
+            let jstring: jni::objects::JString = env.new_string(serde_json::to_string(&modified_notification).expect("Can't serialize NotificationData").clone());
 
-            let initial_value = env.new_string("").unwrap();
-            let result = env
-                .new_object_array(jstrings.len() as i32, "java/lang/String", initial_value)
-                .unwrap();
-            let mut i = 0;
-            for argument in jstrings {
-                // let value = env.new_string(argument);
-                let _ = env.set_object_array_element(&result, i, argument);
-                i = i + 1;
-            }
-
-            result
+            jstring
         }
 
+        #[cfg(target_os = "ios")]
+        #[repr(C)]
+        pub struct RustByteSlice {
+            pub bytes: *const u8,
+            pub len: usize,
+        }
+        #[cfg(target_os = "ios")]
+        impl RustByteSlice {
+            fn as_str(&self) -> &str {
+                unsafe {
+                    // from_utf8_unchecked is sound because we checked in the constructor
+                    std::str::from_utf8_unchecked(std::slice::from_raw_parts(self.bytes, self.len))
+                }
+            }  
+        }
+        #[cfg(target_os = "ios")]
+        impl<'a> From<&'a str> for RustByteSlice {
+            fn from(s: &'a str) -> Self {
+                RustByteSlice{
+                    bytes: s.as_ptr(),
+                    len: s.len() as usize,
+                }
+            }
+        }        
+        #[cfg(target_os = "ios")]
+        #[no_mangle]
+        pub unsafe extern "C" fn notification_destroy(data: *mut RustByteSlice) {
+            let _ = Box::from_raw(data);
+        }
+        #[cfg(target_os = "ios")]
+        #[no_mangle]
+        pub unsafe extern "C" fn notification_title(data: *const tauri_plugin_notification::NotificationData) -> RustByteSlice {
+            let named_data = &*data;
+            match &named_data.title {
+                Some(b) => RustByteSlice::from(b.as_ref()),
+                None => RustByteSlice::from("")
+            }
+        }
+        #[cfg(target_os = "ios")]
+        #[no_mangle]
+        pub unsafe extern "C" fn notification_body(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
+            let named_data = &*data;
+            match &named_data.body {
+                Some(b) => RustByteSlice::from(b.as_ref()),
+                None => RustByteSlice::from("")
+            }
+        }
+        #[cfg(target_os = "ios")]
+        #[no_mangle]
+        pub unsafe extern "C" fn modify_notification(notification_str: RustByteSlice) -> *mut tauri_plugin_notification::NotificationData {
+            let notification: tauri_plugin_notification::NotificationData = serde_json::from_str(notification_str.as_str()).unwrap();
+        
+            let new_notification = #fn_name(notification);
+        
+           // let new_notification_str = serde_json::to_string(&new_notification).unwrap();
+            //let s = &*new_notification_str;
+            let boxed_data = Box::new(new_notification);
+            Box::into_raw(boxed_data)
+        }
+        
         #input
     };
 

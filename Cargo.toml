@@ -31,4 +31,6 @@ opt-level = "s"
 
 [patch.crates-io]
 swift-rs = { git = "https://github.com/guillemcordoba/swift-rs", branch = "main" }
-tao  = { path = "../tao" }
+tao = { git = "https://github.com/guillemcordoba/tao", branch = "dev" }
+tauri = { git = "https://github.com/guillemcordoba/tauri", branch = "dev" }
+tauri-build = { git = "https://github.com/guillemcordoba/tauri", branch = "dev" }

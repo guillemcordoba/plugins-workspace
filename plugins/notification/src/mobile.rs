@@ -44,24 +44,23 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
     let handle = api.register_android_plugin(PLUGIN_IDENTIFIER, "NotificationPlugin")?;
     #[cfg(target_os = "ios")]
     let handle = api.register_ios_plugin(init_plugin_notification)?;
-    #[cfg(target_os = "android")]
-    {
-        let app_handle = app.clone();
-        handle.run_mobile_plugin::<()>(
-            "registerListener",
-            RegisterListenerArgs {
-                event: String::from("actionPerformed"),
-                handler: TauriChannel::new(move |event| {
-                    if let InvokeBody::Json(payload) = event {
-                        let n: NotificationActionPerformedPayload =
-                            serde_json::from_value(payload)?;
-                        app_handle.emit("notification-action-performed", n)?;
-                    };
-                    Ok(())
-                }),
-            },
-        )?;
-    }
+
+    let app_handle = app.clone();
+    handle.run_mobile_plugin::<()>(
+        "registerListener",
+        RegisterListenerArgs {
+            event: String::from("actionPerformed"),
+            handler: TauriChannel::new(move |event| {
+                if let InvokeBody::Json(payload) = event {
+                    let n: NotificationActionPerformedPayload =
+                        serde_json::from_value(payload)?;
+                    app_handle.emit("notification-action-performed", n)?;
+                };
+                Ok(())
+            }),
+        },
+    )?;
+
     Ok(Notification(handle))
 }
 
@@ -82,38 +81,26 @@ impl<R: Runtime> Notification<R> {
         crate::NotificationBuilder::new(self.0.clone())
     }
 
-    pub fn get_launching_notification(
-        &self,
-    ) -> crate::Result<Option<NotificationActionPerformedPayload>> {
-        let launching_notification = self
-            .0
-            .run_mobile_plugin::<Option<Value>>("getLaunchingNotification", ())?;
-        match launching_notification {
-            Some(notification) => {
-                println!("HI {notification:?}");
-                if let Some(_) = notification.get("notification") {
-                    let notification: NotificationActionPerformedPayload =
-                        serde_json::from_value(notification)?;
-                    return Ok(Some(notification));
-                } else {
-                    return Ok(None);
-                }
-            }
-            None => Ok(None),
-        }
+    pub fn register_for_push_notifications(&self) -> crate::Result<()> {
+        let app_handle = self.0.app().clone();
+        self.0.run_mobile_plugin::<()>(
+            "registerListener",
+            RegisterListenerArgs {
+                event: String::from("new-fcm-token"),
+                handler: TauriChannel::new(move |event| {
+                    if let InvokeBody::Json(Value::String(payload)) = event {
+                        app_handle.emit("new-fcm-token", payload)?;
+                    };
+                    Ok(())
+                }),
+            },
+        )?;
+
+        self.0.run_mobile_plugin::<()>("registerForPushNotifications", ())?;
+
+        Ok(())
     }
 
-    pub fn register_for_push_notifications(&self) -> crate::Result<String> {
-        self.0
-            .run_mobile_plugin::<String>("registerForPushNotifications", ())
-            .map_err(Into::into)
-    }
-
-    pub fn get_fcm_token(&self) -> crate::Result<String> {
-        self.0
-            .run_mobile_plugin::<String>("getFCMToken", ())
-            .map_err(Into::into)
-    }
 
     pub fn request_permission(&self) -> crate::Result<PermissionState> {
         self.0

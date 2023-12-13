@@ -24,8 +24,8 @@
 		BDB00E002B28B09F00BEF16D /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDB00DFF2B28B09F00BEF16D /* NotificationService.swift */; };
 		BDB00E042B28B09F00BEF16D /* PushNotificationsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BDB00DFD2B28B09F00BEF16D /* PushNotificationsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BDB00E0B2B28B0B100BEF16D /* bindings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BDB00E0A2B28B0B100BEF16D /* bindings.cpp */; };
-		BDB00E0F2B28B26C00BEF16D /* libpushnotifications.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BDB00E0E2B28B26C00BEF16D /* libpushnotifications.a */; };
 		BDD51A412B27341D00D87925 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = BDD51A402B27341D00D87925 /* GoogleService-Info.plist */; };
+		BDDE1C1F2B29CA1200C9D7A8 /* libpushnotifications.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BDB00E0C2B28B13B00BEF16D /* libpushnotifications.a */; };
 		D312B3AAF45E6396C9DEC327 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 20C95AE5FEA79AF4DAE41009 /* Assets.xcassets */; };
 		EC744454136B98BDC64DC1C1 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BD72B65C83E1444F95118370 /* Metal.framework */; };
 		EFA53FADB5F64796D15FFE15 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 54FDBE9D245EEF85382B0074 /* MetalKit.framework */; };
@@ -91,7 +91,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BDB00E0F2B28B26C00BEF16D /* libpushnotifications.a in Frameworks */,
+				BDDE1C1F2B29CA1200C9D7A8 /* libpushnotifications.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
