@@ -9,12 +9,12 @@ pub fn modify_push_notification(_args: TokenStream, input: TokenStream) -> Token
 
     let expanded = quote! {
         #[cfg(target_os = "android")]
-        tauri::wry::application::android_fn!(
+        tauri::wry::prelude::android_fn!(
             app_tauri,
             notification,
             PushNotificationsService,
             modifypushnotification,
-            [jni::objects::JObject<'local>],
+            [jni::objects::JString<'local>],
             jni::objects::JString<'local>,
             [#fn_name]
         );
@@ -47,15 +47,19 @@ pub fn modify_push_notification(_args: TokenStream, input: TokenStream) -> Token
         unsafe fn modifypushnotification<'local>(
             mut env: jni::JNIEnv<'local>,
             class: jni::objects::JClass<'local>,
-            jobject: jni::objects::JObject<'local>,
+            jnotification: jni::objects::JString<'local>,
             main: fn(tauri_plugin_notification::NotificationData) -> tauri_plugin_notification::NotificationData,
-            notification: jni::objects::JString<'local>
         ) -> jni::objects::JString<'local> {
-            // setup_android_log();
+            let notification: String = env
+                .get_string(&jnotification)
+                .expect("Couldn't get java string!")
+                .into();
 
-            let modified_notification = main();
+            let notification_data: tauri_plugin_notification::NotificationData = serde_json::from_str(notification.as_str()).expect("Can't convert notification");
 
-            let jstring: jni::objects::JString = env.new_string(serde_json::to_string(&modified_notification).expect("Can't serialize NotificationData").clone());
+            let modified_notification = main(notification_data);
+
+            let jstring: jni::objects::JString = env.new_string(serde_json::to_string(&modified_notification).expect("Can't serialize NotificationData").clone()).expect("Coulnd't reserve new string");
 
             jstring
         }
@@ -73,7 +77,7 @@ pub fn modify_push_notification(_args: TokenStream, input: TokenStream) -> Token
                     // from_utf8_unchecked is sound because we checked in the constructor
                     std::str::from_utf8_unchecked(std::slice::from_raw_parts(self.bytes, self.len))
                 }
-            }  
+            }
         }
         #[cfg(target_os = "ios")]
         impl<'a> From<&'a str> for RustByteSlice {
@@ -83,7 +87,7 @@ pub fn modify_push_notification(_args: TokenStream, input: TokenStream) -> Token
                     len: s.len() as usize,
                 }
             }
-        }        
+        }
         #[cfg(target_os = "ios")]
         #[no_mangle]
         pub unsafe extern "C" fn notification_destroy(data: *mut RustByteSlice) {
@@ -111,15 +115,15 @@ pub fn modify_push_notification(_args: TokenStream, input: TokenStream) -> Token
         #[no_mangle]
         pub unsafe extern "C" fn modify_notification(notification_str: RustByteSlice) -> *mut tauri_plugin_notification::NotificationData {
             let notification: tauri_plugin_notification::NotificationData = serde_json::from_str(notification_str.as_str()).unwrap();
-        
+
             let new_notification = #fn_name(notification);
-        
+
            // let new_notification_str = serde_json::to_string(&new_notification).unwrap();
             //let s = &*new_notification_str;
             let boxed_data = Box::new(new_notification);
             Box::into_raw(boxed_data)
         }
-        
+
         #input
     };
 

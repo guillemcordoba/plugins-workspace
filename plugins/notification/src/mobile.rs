@@ -11,8 +11,6 @@ use tauri::{
 
 use tauri_plugin_notification_models::*;
 
-use serde_json::Value;
-
 use std::collections::HashMap;
 
 #[derive(Serialize)]
@@ -51,9 +49,10 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
         RegisterListenerArgs {
             event: String::from("actionPerformed"),
             handler: TauriChannel::new(move |event| {
+                println!("EVENT{event:?}");
                 if let InvokeBody::Json(payload) = event {
-                    let n: NotificationActionPerformedPayload =
-                        serde_json::from_value(payload)?;
+                    let n: NotificationActionPerformedPayload = serde_json::from_value(payload)?;
+                    app_handle.manage(n.clone());
                     app_handle.emit("notification-action-performed", n)?;
                 };
                 Ok(())
@@ -86,21 +85,28 @@ impl<R: Runtime> Notification<R> {
         self.0.run_mobile_plugin::<()>(
             "registerListener",
             RegisterListenerArgs {
-                event: String::from("new-fcm-token"),
+                event: String::from("newFcmToken"),
                 handler: TauriChannel::new(move |event| {
-                    if let InvokeBody::Json(Value::String(payload)) = event {
-                        app_handle.emit("new-fcm-token", payload)?;
+                    let token = match event {
+                        InvokeBody::Json(payload) => payload
+                            .get("token")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_owned()),
+                        _ => None,
                     };
+                    if let Some(t) = token {
+                        app_handle.emit("new-fcm-token", t)?;
+                    }
                     Ok(())
                 }),
             },
         )?;
 
-        self.0.run_mobile_plugin::<()>("registerForPushNotifications", ())?;
+        self.0
+            .run_mobile_plugin::<()>("registerForPushNotifications", ())?;
 
         Ok(())
     }
-
 
     pub fn request_permission(&self) -> crate::Result<PermissionState> {
         self.0

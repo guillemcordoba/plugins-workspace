@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-use std::{process::Command, path::Path};
-
 fn main() {
     if let Err(error) = tauri_build::mobile::PluginBuilder::new()
         .android_path("android")

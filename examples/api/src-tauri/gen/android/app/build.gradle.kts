@@ -6,10 +6,10 @@ plugins {
 
 android {
     compileSdk = 33
-    namespace = "com.tauri.api"
+    namespace = "studio.darksoil.pushnotifications"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "com.tauri.api"
+        applicationId = "studio.darksoil.pushnotifications"
         minSdk = 24
         targetSdk = 33
         versionCode = 1

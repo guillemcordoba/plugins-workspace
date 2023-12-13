@@ -23,6 +23,7 @@ import app.tauri.plugin.JSArray
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import app.tauri.Logger
+import com.google.firebase.messaging.FirebaseMessaging
 
 const val LOCAL_NOTIFICATIONS = "permissionState"
 
@@ -83,7 +84,6 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   private lateinit var notificationManager: NotificationManager
   private lateinit var notificationStorage: NotificationStorage
   private var channelManager = ChannelManager(activity)
-  private var launchingNotification: JSObject? = null
 
   companion object {
     var instance: NotificationPlugin? = null
@@ -131,13 +131,23 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
     val dataJson = manager.handleNotificationActionPerformed(intent, notificationStorage)
     if (dataJson != null) {
       trigger("actionPerformed", dataJson)
-      this.launchingNotification = dataJson
     }
   }
 
   @Command
-  fun getLaunchingNotification(invoke: Invoke) {
-    invoke.resolve(this.launchingNotification)
+  fun registerForPushNotifications(invoke: Invoke) {
+    invoke.resolve()
+
+    FirebaseMessaging.getInstance().getToken().addOnCompleteListener { task ->
+      if (!task.isSuccessful) {
+          Logger.error(Logger.tags("Notification"), "Fetching FCM registration token failed", task.exception)
+          return@addOnCompleteListener
+      }
+
+      // val data = JSObject()
+      // data.put("token", task.result)
+      // trigger("newFcmToken", data)
+    }
   }
 
   @Command

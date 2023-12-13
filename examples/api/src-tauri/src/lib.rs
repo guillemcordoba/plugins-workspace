@@ -6,12 +6,7 @@ mod cmd;
 #[cfg(desktop)]
 mod tray;
 
-use std::collections::HashMap;
-use std::fmt::format;
-use std::thread::Thread;
-use std::time::Duration;
-
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 use tauri::{window::WindowBuilder, App, AppHandle, Manager, RunEvent, WindowUrl};
 
 #[derive(Clone, Serialize)]
@@ -108,28 +103,37 @@ pub fn run() {
                 }
             });
 
+            app.notification().request_permission()?;
+
             let h = app.app_handle().clone();
+            println!("onlistener");
+            #[cfg(mobile)]
             app.listen_global("notification-action-performed", move |event| {
+                println!("heee1{event:?}");
                 if let Ok(notification_action_performed_payload) = serde_json::from_str::<
                     tauri_plugin_notification::NotificationActionPerformedPayload,
                 >(event.payload())
                 {
-                    h.notification().builder().title("NOTIFI").body(format!("uhhhh {notification_action_performed_payload:?}")).show().unwrap();
+                    println!("heee{notification_action_performed_payload:?}");
+                    h.notification()
+                        .builder()
+                        .title("NOTIFI")
+                        .body(format!("uhhhh "))
+                        .show()
+                        .unwrap();
                 }
             });
 
             app.listen_global("new-fcm-token", move |event| {
-                if let Ok(token) = serde_json::from_str::<
-                String
-            >(event.payload())
-            {
-                println!("new-fcm-token {:?}", token);
-            }
-
+                if let Ok(token) = serde_json::from_str::<String>(event.payload()) {
+                    println!("new-fcm-token {:?}", token);
+                }
             });
 
             #[cfg(mobile)]
-            app.notification().register_for_push_notifications().unwrap();
+            app.notification()
+                .register_for_push_notifications()
+                .unwrap();
 
             Ok(())
         })
@@ -176,12 +180,12 @@ pub fn run() {
 
 use jni::objects::JClass;
 use jni::JNIEnv;
-use tauri_plugin_notification::{NotificationExt, NotificationData};
+use tauri_plugin_notification::{NotificationData, NotificationExt};
 
 #[tauri_plugin_notification::modify_push_notification]
 pub fn modify_push_notification(mut notification: NotificationData) -> NotificationData {
     //n.title = Some(String::from("AAA"));
-    notification.body = Some(String::from("AAA"));
+    notification.title = Some(String::from("AAA"));
     // let mut extra: HashMap<String, Value> = HashMap::new();
     // n.extra = extra;
     notification

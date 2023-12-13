@@ -171,7 +171,9 @@ class NotificationPlugin: Plugin, MessagingDelegate {
     Logger.info("Firebase registration token: \(String(describing: fcmToken))")
     
     self.fcmToken = fcmToken
-    try? self.trigger("new-fcm-token", data: fcmToken)
+    var data = JSObject()
+    data["token"] = fcmToken
+    try? self.trigger("newFcmToken", data: data)
   }
       
   @objc func didRegisterWithToken(notification: NSNotification) {
@@ -187,7 +189,7 @@ class NotificationPlugin: Plugin, MessagingDelegate {
       return
     }
 
-    try? self.trigger("register-with-fcm-failed", data: error.localizedDescription)
+    try? self.trigger("registerWithFcmFailed", data: error.localizedDescription)
   }
 
   @objc public func registerForPushNotifications(_ invoke: Invoke) throws {

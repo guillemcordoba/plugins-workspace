@@ -20,18 +20,9 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         // If you want to send messages to this application instance or
         // manage this apps subscriptions on the server side, send the
         // Instance ID token to your app server.
-        sendRegistrationToServer(token)
-    }
-
-    private fun sendRegistrationToServer(token: String) {
-        // TODO : send token to tour server
-        Log.e("myToken", "" + token)
-    }
-
-    companion object {
-        init {
-            System.loadLibrary("api_lib")
-        }
+        val data = JSObject()
+        data.put("token", token)
+        NotificationPlugin.instance?.trigger("newFcmToken", data)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
@@ -41,11 +32,10 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         val data = JSObject()
 
         for (entry in message.data.entries.iterator()) {
+            val key = entry.key
+            val value = entry.value
             data.put(entry.key, entry.value)
         }
-
-        val message = JSObject()
-        message.put("data", data)
 
         val notificationStorage = NotificationStorage(this, jsonMapper())
         val manager = TauriNotificationManager(
@@ -56,14 +46,12 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         )
         manager.createNotificationChannel()
 
-        val notifications = fetchpendingnotifications(this)
-        for (notification in notifications) {
-            Log.i("PushNotificationService ", "Notifications :: $notification")
-            val n = jsonMapper().readValue(notification, Notification::class.java)
-            n.sourceJson = notification
-            manager.schedule(n)
-        }
+        val notification = modifypushnotification(data.toString())
+        Log.i("PushNotificationService ", "Notifications :: $notification")
+        val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
+        modifiedNotification.sourceJson = notification
+        manager.schedule(modifiedNotification)
     }
 
-    private external fun fetchpendingnotifications(context: PushNotificationsService): Array<String>
+    private external fun modifypushnotification(notification: String): String
 }
