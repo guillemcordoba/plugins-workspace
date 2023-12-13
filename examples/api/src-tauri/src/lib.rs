@@ -11,7 +11,7 @@ use std::fmt::format;
 use std::thread::Thread;
 use std::time::Duration;
 
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use tauri::{window::WindowBuilder, App, AppHandle, Manager, RunEvent, WindowUrl};
 
 #[derive(Clone, Serialize)]
@@ -173,19 +173,74 @@ pub fn run() {
 
 use jni::objects::JClass;
 use jni::JNIEnv;
-use tauri_plugin_notification::NotificationExt;
+use tauri_plugin_notification::{NotificationExt, NotificationData};
 
 #[tauri_plugin_notification::fetch_pending_notifications]
-pub fn fetch_pending_notifications() -> Vec<tauri_plugin_notification::NotificationData> {
-    let mut n = tauri_plugin_notification::NotificationData::default();
-    n.id = 333;
-    n.title = Some(String::from("AAA"));
+pub fn modify_push_notification(mut notification: PushNotification) -> PushNotification {
+    std::thread::sleep(std::time::Duration::from_secs(5));
+    //n.title = Some(String::from("AAA"));
+    notification.body = String::from("AAA");
     // let mut extra: HashMap<String, Value> = HashMap::new();
     // n.extra = extra;
-    vec![n]
+    notification
+}
+
+#[repr(C)]
+pub struct RustByteSlice {
+    pub bytes: *const u8,
+    pub len: usize,
+}
+
+impl RustByteSlice {
+    fn as_str(&self) -> &str {
+        unsafe {
+            // from_utf8_unchecked is sound because we checked in the constructor
+            std::str::from_utf8_unchecked(std::slice::from_raw_parts(self.bytes, self.len))
+        }
+    }  
+}
+
+impl<'a> From<&'a str> for RustByteSlice {
+    fn from(s: &'a str) -> Self {
+        RustByteSlice{
+            bytes: s.as_ptr(),
+            len: s.len() as usize,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PushNotification {
+    pub title: String,
+    pub body: String,
 }
 
 #[no_mangle]
-pub extern "C" fn modify_notification() -> String {
-    format!("aaaaa")
+pub unsafe extern "C" fn notification_destroy(data: *mut RustByteSlice) {
+    let _ = Box::from_raw(data);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn notification_title(data: *const PushNotification) -> RustByteSlice {
+    let named_data = &*data;
+    RustByteSlice::from(named_data.title.as_ref())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn notification_body(data: *const PushNotification) -> RustByteSlice {
+    let named_data = &*data;
+    RustByteSlice::from(named_data.body.as_ref())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn modify_notification(notification_str: RustByteSlice) -> *mut PushNotification {
+    let notification: PushNotification = serde_json::from_str(notification_str.as_str()).unwrap();
+
+    let new_notification = modify_push_notification(notification);
+
+   // let new_notification_str = serde_json::to_string(&new_notification).unwrap();
+    //let s = &*new_notification_str;
+    let boxed_data = Box::new(new_notification);
+    Box::into_raw(boxed_data)
 }
