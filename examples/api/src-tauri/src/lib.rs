@@ -109,12 +109,10 @@ pub fn run() {
             println!("onlistener");
             #[cfg(mobile)]
             app.listen_global("notification-action-performed", move |event| {
-                println!("heee1{event:?}");
                 if let Ok(notification_action_performed_payload) = serde_json::from_str::<
                     tauri_plugin_notification::NotificationActionPerformedPayload,
                 >(event.payload())
                 {
-                    println!("heee{notification_action_performed_payload:?}");
                     h.notification()
                         .builder()
                         .title("NOTIFI")

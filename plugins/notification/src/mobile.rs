@@ -49,7 +49,6 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
         RegisterListenerArgs {
             event: String::from("actionPerformed"),
             handler: TauriChannel::new(move |event| {
-                println!("EVENT{event:?}");
                 if let InvokeBody::Json(payload) = event {
                     let n: NotificationActionPerformedPayload = serde_json::from_value(payload)?;
                     app_handle.manage(n.clone());
