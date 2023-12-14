@@ -17,6 +17,8 @@ pub enum Error {
     Path(#[from] tauri::path::Error),
     #[error(transparent)]
     Serialization(#[from] serde_json::Error),
+    #[error("Error registering with FCM")]
+    RegisterWithFcmError(String),
 }
 
 impl Serialize for Error {

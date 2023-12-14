@@ -84,6 +84,7 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   private lateinit var notificationManager: NotificationManager
   private lateinit var notificationStorage: NotificationStorage
   private var channelManager = ChannelManager(activity)
+  private var fcmToken: String? = null
 
   companion object {
     var instance: NotificationPlugin? = null
@@ -124,7 +125,6 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   }
 
   fun onIntent(intent: Intent) {
-    Logger.error(Logger.tags("Notification"), "on intent", null)
     if (Intent.ACTION_MAIN != intent.action) {
       return
     }
@@ -136,20 +136,21 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
 
   @Command
   fun registerForPushNotifications(invoke: Invoke) {
-    invoke.resolve()
-
     FirebaseMessaging.getInstance().getToken().addOnCompleteListener { task ->
       if (!task.isSuccessful) {
           Logger.error(Logger.tags("Notification"), "Fetching FCM registration token failed", task.exception)
+          invoke.reject("Fetching FCM registration token failed", task.exception)
           return@addOnCompleteListener
       }
 
-      // val data = JSObject()
-      // data.put("token", task.result)
-      // trigger("newFcmToken", data)
+      fcmToken = task.result
+      Logger.info("Registered for FCM with token:", task.result)
+      val data = JSObject()
+      data.put("token", fcmToken)
+      invoke.resolve(data)
     }
   }
-
+  
   @Command
   fun show(invoke: Invoke) {
     val notification = invoke.parseArgs(Notification::class.java)

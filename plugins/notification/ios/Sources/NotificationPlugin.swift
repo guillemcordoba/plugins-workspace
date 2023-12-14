@@ -159,6 +159,7 @@ class NotificationPlugin: Plugin, MessagingDelegate {
   let notificationHandler = NotificationHandler()
   let notificationManager = NotificationManager()
   var fcmToken: String?
+  var registerInvoke: Invoke?
 
   override init() {
     super.init()
@@ -169,11 +170,20 @@ class NotificationPlugin: Plugin, MessagingDelegate {
   // Note: This callback is fired at each app startup and whenever a new token is generated.
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
     Logger.info("Firebase registration token: \(String(describing: fcmToken))")
-    
+
     self.fcmToken = fcmToken
-    var data = JSObject()
-    data["token"] = fcmToken
-    try? self.trigger("newFcmToken", data: data)
+
+    var registerInvoke = self.registerInvoke
+    if registerInvoke != nil {
+      var data = JSObject()
+      data["token"] = fcmToken
+      registerInvoke.resolve(data)
+      self.registerInvoke = nil
+    } else {
+      var data = JSObject()
+      data["token"] = fcmToken
+      try? self.trigger("newFcmToken", data: data)
+    }
   }
       
   @objc func didRegisterWithToken(notification: NSNotification) {
@@ -189,7 +199,11 @@ class NotificationPlugin: Plugin, MessagingDelegate {
       return
     }
 
-    try? self.trigger("registerWithFcmFailed", data: error.localizedDescription)
+    var registerInvoke = self.registerInvoke
+    if registerInvoke != nil {
+      registerInvoke.reject(error)
+      self.registerInvoke = nil
+    }
   }
 
   @objc public func registerForPushNotifications(_ invoke: Invoke) throws {
@@ -197,7 +211,7 @@ class NotificationPlugin: Plugin, MessagingDelegate {
     NotificationCenter.default.addObserver(self, selector: #selector(self.failedToRegisterWithToken(notification:)), name: NSNotification.Name("failedToRegisterApnToken"), object: nil)
     FirebaseApp.configure()
 
-    invoke.resolve()
+    registerInvoke = invoke
 
     DispatchQueue.main.async {
 
@@ -212,6 +226,14 @@ class NotificationPlugin: Plugin, MessagingDelegate {
   
       UIApplication.shared.registerForRemoteNotifications()
     }
+  }
+
+  @objc public func getFCMToken(_ invoke: Invoke) throws {
+    var data = JSObject()
+    if fcmToken != null {
+      data["token"] = fcmToken
+    }
+    invoke.resolveObject(data)
   }
 
   @objc public func show(_ invoke: Invoke) throws {

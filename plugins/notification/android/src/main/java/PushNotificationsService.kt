@@ -9,6 +9,12 @@ import com.fasterxml.jackson.module.kotlin.jsonMapper
 
 class PushNotificationsService(): FirebaseMessagingService()  {
 
+    companion object {
+        init {
+            System.loadLibrary("pushnotifications")
+        }
+    }
+
     /**
      * Called if InstanceID token is updated. This may occur if the security of
      * the previous token had been compromised. Note that this is called when the InstanceID token
@@ -46,6 +52,9 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         )
         manager.createNotificationChannel()
 
+        val d = data.toString()
+
+        Log.i("PushNotificationService ", "data:: $d")
         val notification = modifypushnotification(data.toString())
         Log.i("PushNotificationService ", "Notifications :: $notification")
         val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)

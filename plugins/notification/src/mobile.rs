@@ -79,7 +79,7 @@ impl<R: Runtime> Notification<R> {
         crate::NotificationBuilder::new(self.0.clone())
     }
 
-    pub fn register_for_push_notifications(&self) -> crate::Result<()> {
+    pub fn register_for_push_notifications(&self) -> crate::Result<String> {
         let app_handle = self.0.app().clone();
         self.0.run_mobile_plugin::<()>(
             "registerListener",
@@ -101,10 +101,21 @@ impl<R: Runtime> Notification<R> {
             },
         )?;
 
-        self.0
-            .run_mobile_plugin::<()>("registerForPushNotifications", ())?;
+        let token_value = self
+            .0
+            .run_mobile_plugin::<serde_json::Value>("registerForPushNotifications", ())?;
 
-        Ok(())
+        match token_value.get("token") {
+            None => Err(crate::Error::RegisterWithFcmError(String::from(
+                "Error registering with FCM",
+            ))),
+            Some(v) => match v {
+                serde_json::Value::String(t) => Ok(t.clone()),
+                _ => Err(crate::Error::RegisterWithFcmError(String::from(
+                    "Error registering with FCM",
+                ))),
+            },
+        }
     }
 
     pub fn request_permission(&self) -> crate::Result<PermissionState> {

@@ -106,19 +106,13 @@ pub fn run() {
             app.notification().request_permission()?;
 
             let h = app.app_handle().clone();
-            println!("onlistener");
             #[cfg(mobile)]
             app.listen_global("notification-action-performed", move |event| {
                 if let Ok(notification_action_performed_payload) = serde_json::from_str::<
                     tauri_plugin_notification::NotificationActionPerformedPayload,
                 >(event.payload())
                 {
-                    h.notification()
-                        .builder()
-                        .title("NOTIFI")
-                        .body(format!("uhhhh "))
-                        .show()
-                        .unwrap();
+                    println!("onlistener{:?}", notification_action_performed_payload);
                 }
             });
 
@@ -128,10 +122,14 @@ pub fn run() {
                 }
             });
 
+            let h = app.handle().clone();
             #[cfg(mobile)]
-            app.notification()
-                .register_for_push_notifications()
-                .unwrap();
+            tauri::async_runtime::spawn(async move {
+                println!(
+                    "FCMTOKEN {:?}",
+                    h.notification().register_for_push_notifications().unwrap()
+                );
+            });
 
             Ok(())
         })
@@ -183,7 +181,7 @@ use tauri_plugin_notification::{NotificationData, NotificationExt};
 #[tauri_plugin_notification::modify_push_notification]
 pub fn modify_push_notification(mut notification: NotificationData) -> NotificationData {
     //n.title = Some(String::from("AAA"));
-    notification.title = Some(String::from("AAA"));
+    notification.body = Some(String::from("AAA"));
     // let mut extra: HashMap<String, Value> = HashMap::new();
     // n.extra = extra;
     notification
