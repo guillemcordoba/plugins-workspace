@@ -173,8 +173,8 @@ class NotificationPlugin: Plugin, MessagingDelegate {
 
     self.fcmToken = fcmToken
 
-    var registerInvoke = self.registerInvoke
-    if registerInvoke != nil {
+    let registerInvoke = self.registerInvoke
+    if let registerInvoke = registerInvoke {
       var data = JSObject()
       data["token"] = fcmToken
       registerInvoke.resolve(data)
@@ -199,9 +199,9 @@ class NotificationPlugin: Plugin, MessagingDelegate {
       return
     }
 
-    var registerInvoke = self.registerInvoke
-    if registerInvoke != nil {
-      registerInvoke.reject(error)
+    let registerInvoke = self.registerInvoke
+    if let registerInvoke = registerInvoke {
+      registerInvoke.reject(error.localizedDescription)
       self.registerInvoke = nil
     }
   }
@@ -214,7 +214,6 @@ class NotificationPlugin: Plugin, MessagingDelegate {
     registerInvoke = invoke
 
     DispatchQueue.main.async {
-
       UNUserNotificationCenter.current().delegate = self.notificationManager
       let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
       UNUserNotificationCenter.current().requestAuthorization(
@@ -226,14 +225,6 @@ class NotificationPlugin: Plugin, MessagingDelegate {
   
       UIApplication.shared.registerForRemoteNotifications()
     }
-  }
-
-  @objc public func getFCMToken(_ invoke: Invoke) throws {
-    var data = JSObject()
-    if fcmToken != null {
-      data["token"] = fcmToken
-    }
-    invoke.resolveObject(data)
   }
 
   @objc public func show(_ invoke: Invoke) throws {

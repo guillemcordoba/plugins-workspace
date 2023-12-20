@@ -181,7 +181,7 @@ use tauri_plugin_notification::{NotificationData, NotificationExt};
 #[tauri_plugin_notification::modify_push_notification]
 pub fn modify_push_notification(mut notification: NotificationData) -> NotificationData {
     //n.title = Some(String::from("AAA"));
-    notification.body = Some(String::from("AAA"));
+    notification.title = Some(String::from("2AAA"));
     // let mut extra: HashMap<String, Value> = HashMap::new();
     // n.extra = extra;
     notification
