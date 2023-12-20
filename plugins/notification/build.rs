@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
+use regex::Regex;
 use std::{
     fs::{self, OpenOptions},
     io::Write,
@@ -14,10 +15,14 @@ fn main() {
             .expect("Expected WRY_ANDROID_LIBRARY to be set when targeting android.");
 
         let push_notifications_service_path = "android/src/main/java/PushNotificationsService.kt";
+        let re = Regex::new(r#"loadLibrary\(".*?"\)"#).unwrap();
 
         let contents = fs::read_to_string(push_notifications_service_path)
             .expect("Couldn't find PushNotificationsService");
-        let new = contents.replace("pushnotifications", android_library.as_str());
+        let new = re.replace(
+            contents.as_str(),
+            format!("loadLibrary(\"{android_library}\")").as_str(),
+        );
         let mut file = OpenOptions::new()
             .write(true)
             .truncate(true)

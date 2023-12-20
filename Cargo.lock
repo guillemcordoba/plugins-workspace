@@ -6088,6 +6088,7 @@ version = "2.0.0-alpha.5"
 dependencies = [
  "log",
  "notify-rust",
+ "regex",
  "serde",
  "serde_json",
  "serde_repr",

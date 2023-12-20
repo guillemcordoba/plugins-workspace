@@ -11,7 +11,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
 
     companion object {
         init {
-            System.loadLibrary("pushnotifications")
+            System.loadLibrary("REPLACE_ME")
         }
     }
 
