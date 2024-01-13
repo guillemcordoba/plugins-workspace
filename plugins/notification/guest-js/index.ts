@@ -13,7 +13,7 @@ import {
   invoke,
   PluginListener,
   addPluginListener,
-} from "@tauri-apps/api/primitives";
+} from "@tauri-apps/api/core";
 
 /**
  * Options to send a notification.
@@ -568,6 +568,7 @@ export type {
   PendingNotification,
   ActiveNotification,
   Channel,
+  ScheduleInterval,
 };
 
 export {
@@ -588,4 +589,6 @@ export {
   channels,
   onNotificationReceived,
   onAction,
+  Schedule,
+  ScheduleEvery,
 };
