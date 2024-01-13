@@ -50,7 +50,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
           this,
           null
         )
-        manager.createNotificationChannel()
+        // manager.createNotificationChannel()
 
         val d = data.toString()
 
