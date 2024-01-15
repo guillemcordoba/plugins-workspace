@@ -11,8 +11,8 @@ use url::Url;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Attachment {
-    id: String,
-    url: Url,
+    pub id: String,
+    pub url: Url,
 }
 
 impl Attachment {
