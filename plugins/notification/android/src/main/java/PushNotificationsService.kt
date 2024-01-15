@@ -11,7 +11,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
 
     companion object {
         init {
-            System.loadLibrary("REPLACE_ME")
+            System.loadLibrary("pushnotifications")
         }
     }
 
@@ -38,8 +38,6 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         val data = JSObject()
 
         for (entry in message.data.entries.iterator()) {
-            val key = entry.key
-            val value = entry.value
             data.put(entry.key, entry.value)
         }
 

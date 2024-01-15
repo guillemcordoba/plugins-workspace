@@ -108,6 +108,11 @@ pub fn run() {
             app.notification().request_permission()?;
 
             let h = app.app_handle().clone();
+            h.notification()
+                .builder()
+                .title("Hey!")
+                .show()
+                .expect("Failed to send notification");
             #[cfg(mobile)]
             app.listen_global("notification-action-performed", move |event| {
                 if let Ok(notification_action_performed_payload) = serde_json::from_str::<

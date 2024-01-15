@@ -15,6 +15,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { workspace = true, features = ["codegen", "isolation"] }
 
 [dependencies]
+wry = "=0.35.1"
 serde_json = { workspace = true }
 serde = { workspace = true }
 tiny_http = "0.11"
