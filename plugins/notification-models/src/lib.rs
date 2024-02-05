@@ -149,33 +149,33 @@ mod iso8601 {
 #[serde(rename_all = "camelCase")]
 pub struct NotificationData {
     #[serde(default = "default_id")]
-    pub(crate) id: i32,
-    pub(crate) channel_id: Option<String>,
-    pub(crate) title: Option<String>,
-    pub(crate) body: Option<String>,
-    pub(crate) schedule: Option<Schedule>,
-    pub(crate) large_body: Option<String>,
-    pub(crate) summary: Option<String>,
-    pub(crate) action_type_id: Option<String>,
-    pub(crate) group: Option<String>,
+    pub id: i32,
+    pub channel_id: Option<String>,
+    pub title: Option<String>,
+    pub body: Option<String>,
+    pub schedule: Option<Schedule>,
+    pub large_body: Option<String>,
+    pub summary: Option<String>,
+    pub action_type_id: Option<String>,
+    pub group: Option<String>,
     #[serde(default)]
-    pub(crate) group_summary: bool,
-    pub(crate) sound: Option<String>,
+    pub group_summary: bool,
+    pub sound: Option<String>,
     #[serde(default)]
-    pub(crate) inbox_lines: Vec<String>,
-    pub(crate) icon: Option<String>,
-    pub(crate) large_icon: Option<String>,
-    pub(crate) icon_color: Option<String>,
+    pub inbox_lines: Vec<String>,
+    pub icon: Option<String>,
+    pub large_icon: Option<String>,
+    pub icon_color: Option<String>,
     #[serde(default)]
-    pub(crate) attachments: Vec<Attachment>,
+    pub attachments: Vec<Attachment>,
     #[serde(default)]
-    pub(crate) extra: HashMap<String, serde_json::Value>,
+    pub extra: HashMap<String, serde_json::Value>,
     #[serde(default)]
-    pub(crate) ongoing: bool,
+    pub ongoing: bool,
     #[serde(default)]
-    pub(crate) auto_cancel: bool,
+    pub auto_cancel: bool,
     #[serde(default)]
-    pub(crate) silent: bool,
+    pub silent: bool,
 }
 
 fn default_id() -> i32 {
