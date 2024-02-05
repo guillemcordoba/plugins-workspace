@@ -8,6 +8,8 @@ use std::{
     io::Write,
 };
 
+const COMMANDS: &[&str] = &["notify", "request_permission", "is_permission_granted"];
+
 fn main() {
     let is_targeting_android = std::env::var("TARGET").unwrap().contains("android");
     if is_targeting_android {
@@ -32,10 +34,10 @@ fn main() {
             .expect("Failed to write to PushNotificationsService");
     }
 
-    if let Err(error) = tauri_build::mobile::PluginBuilder::new()
+    if let Err(error) = tauri_plugin::Builder::new(COMMANDS)
         .android_path("android")
         .ios_path("ios")
-        .run()
+        .try_build()
     {
         println!("{error:#}");
         // when building documentation for Android the plugin build result is irrelevant to the crate itself

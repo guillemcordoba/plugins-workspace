@@ -9,7 +9,11 @@ import readline from "readline";
 const header = `Copyright 2019-2023 Tauri Programme within The Commons Conservancy
 SPDX-License-Identifier: Apache-2.0
 SPDX-License-Identifier: MIT`;
-const ignoredLicense = "// Copyright 2021 Jonas Kruckenberg";
+const ignoredLicenses = [
+  "// Copyright 2021 Flavio Oliveira",
+  "// Copyright 2021 Jonas Kruckenberg",
+  "// Copyright 2018-2023 the Deno authors.",
+];
 
 const extensions = [".rs", ".js", ".ts", ".yml", ".swift", ".kt"];
 const ignore = [
@@ -44,7 +48,7 @@ async function checkFile(file) {
         line.length === 0 ||
         line.startsWith("#!") ||
         line.startsWith("// swift-tools-version:") ||
-        line === ignoredLicense
+        ignoredLicenses.includes(line)
       ) {
         continue;
       }

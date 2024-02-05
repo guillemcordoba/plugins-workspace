@@ -8,11 +8,11 @@ use serde::{de::Error as DeError, Deserialize, Deserializer, Serialize, Serializ
 
 use url::Url;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Attachment {
-    pub id: String,
-    pub url: Url,
+    id: String,
+    url: Url,
 }
 
 impl Attachment {
@@ -21,7 +21,7 @@ impl Attachment {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduleInterval {
     pub year: Option<u8>,
@@ -33,7 +33,7 @@ pub struct ScheduleInterval {
     pub second: Option<u8>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ScheduleEvery {
     Year,
     Month,
@@ -51,14 +51,14 @@ impl Display for ScheduleEvery {
             f,
             "{}",
             match self {
-                Self::Year => "Year",
-                Self::Month => "Month",
-                Self::TwoWeeks => "TwoWeeks",
-                Self::Week => "Week",
-                Self::Day => "Day",
-                Self::Hour => "Hour",
-                Self::Minute => "Minute",
-                Self::Second => "Second",
+                Self::Year => "year",
+                Self::Month => "month",
+                Self::TwoWeeks => "twoWeeks",
+                Self::Week => "week",
+                Self::Day => "day",
+                Self::Hour => "hour",
+                Self::Minute => "minute",
+                Self::Second => "second",
             }
         )
     }
@@ -93,9 +93,10 @@ impl<'de> Deserialize<'de> for ScheduleEvery {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Schedule {
+    #[serde(rename_all = "camelCase")]
     At {
         #[serde(
             serialize_with = "iso8601::serialize",
@@ -107,11 +108,13 @@ pub enum Schedule {
         #[serde(default)]
         allow_while_idle: bool,
     },
+    #[serde(rename_all = "camelCase")]
     Interval {
         interval: ScheduleInterval,
         #[serde(default)]
         allow_while_idle: bool,
     },
+    #[serde(rename_all = "camelCase")]
     Every {
         interval: ScheduleEvery,
         count: u8,
@@ -139,6 +142,70 @@ mod iso8601 {
             .format(&Iso8601::<SERDE_CONFIG>)
             .map_err(S::Error::custom)?
             .serialize(serializer)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationData {
+    #[serde(default = "default_id")]
+    pub(crate) id: i32,
+    pub(crate) channel_id: Option<String>,
+    pub(crate) title: Option<String>,
+    pub(crate) body: Option<String>,
+    pub(crate) schedule: Option<Schedule>,
+    pub(crate) large_body: Option<String>,
+    pub(crate) summary: Option<String>,
+    pub(crate) action_type_id: Option<String>,
+    pub(crate) group: Option<String>,
+    #[serde(default)]
+    pub(crate) group_summary: bool,
+    pub(crate) sound: Option<String>,
+    #[serde(default)]
+    pub(crate) inbox_lines: Vec<String>,
+    pub(crate) icon: Option<String>,
+    pub(crate) large_icon: Option<String>,
+    pub(crate) icon_color: Option<String>,
+    #[serde(default)]
+    pub(crate) attachments: Vec<Attachment>,
+    #[serde(default)]
+    pub(crate) extra: HashMap<String, serde_json::Value>,
+    #[serde(default)]
+    pub(crate) ongoing: bool,
+    #[serde(default)]
+    pub(crate) auto_cancel: bool,
+    #[serde(default)]
+    pub(crate) silent: bool,
+}
+
+fn default_id() -> i32 {
+    rand::random()
+}
+
+impl Default for NotificationData {
+    fn default() -> Self {
+        Self {
+            id: default_id(),
+            channel_id: None,
+            title: None,
+            body: None,
+            schedule: None,
+            large_body: None,
+            summary: None,
+            action_type_id: None,
+            group: None,
+            group_summary: false,
+            sound: None,
+            inbox_lines: Vec::new(),
+            icon: None,
+            large_icon: None,
+            icon_color: None,
+            attachments: Vec::new(),
+            extra: Default::default(),
+            ongoing: false,
+            auto_cancel: false,
+            silent: false,
+        }
     }
 }
 
@@ -449,70 +516,6 @@ mod android {
 
         pub fn build(self) -> Channel {
             self.0
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct NotificationData {
-    #[serde(default = "default_id")]
-    pub id: i32,
-    pub channel_id: Option<String>,
-    pub title: Option<String>,
-    pub body: Option<String>,
-    pub schedule: Option<Schedule>,
-    pub large_body: Option<String>,
-    pub summary: Option<String>,
-    pub action_type_id: Option<String>,
-    pub group: Option<String>,
-    #[serde(default)]
-    pub group_summary: bool,
-    pub sound: Option<String>,
-    #[serde(default)]
-    pub inbox_lines: Vec<String>,
-    pub icon: Option<String>,
-    pub large_icon: Option<String>,
-    pub icon_color: Option<String>,
-    #[serde(default)]
-    pub attachments: Vec<Attachment>,
-    #[serde(default)]
-    pub extra: HashMap<String, serde_json::Value>,
-    #[serde(default)]
-    pub ongoing: bool,
-    #[serde(default)]
-    pub auto_cancel: bool,
-    #[serde(default)]
-    pub silent: bool,
-}
-
-fn default_id() -> i32 {
-    rand::random()
-}
-
-impl Default for NotificationData {
-    fn default() -> Self {
-        Self {
-            id: default_id(),
-            channel_id: None,
-            title: None,
-            body: None,
-            schedule: None,
-            large_body: None,
-            summary: None,
-            action_type_id: None,
-            group: None,
-            group_summary: false,
-            sound: None,
-            inbox_lines: Vec::new(),
-            icon: None,
-            large_icon: None,
-            icon_color: None,
-            attachments: Vec::new(),
-            extra: Default::default(),
-            ongoing: false,
-            auto_cancel: false,
-            silent: false,
         }
     }
 }

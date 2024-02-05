@@ -214,15 +214,16 @@ class TauriNotificationManager(
     createActionIntents(notification, mBuilder)
     // notificationId is a unique int for each notification that you must define
     val buildNotification = mBuilder.build()
-    // if (notification.isScheduled) {
-    //   triggerScheduledNotification(buildNotification, notification)
-    // } else {
+    // TODO: comment this iff if it doesn't work
+    if (notification.schedule != null) {
+      triggerScheduledNotification(buildNotification, notification)
+    } else {
       notificationManager.notify(notification.id, buildNotification)
       try {
         NotificationPlugin.triggerNotification(notification)
       } catch (_: JSONException) {
       }
-    // }
+    }
   }
 
   // Create intents for open/dismiss actions
@@ -477,7 +478,7 @@ class TimedNotificationPublisher : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     val notificationManager =
       context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    val notification = if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
       intent.getParcelableExtra(
         NOTIFICATION_KEY,
         android.app.Notification::class.java

@@ -1,6 +1,6 @@
 [package]
 name = "tauri-plugin-notification"
-version = "2.0.0-alpha.7"
+version = "2.0.0-beta.0"
 description = "Send desktop and mobile notifications on your Tauri application."
 edition = { workspace = true }
 authors = { workspace = true }
@@ -14,8 +14,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 targets = ["x86_64-unknown-linux-gnu", "x86_64-linux-android"]
 
 [build-dependencies]
-tauri-build = { workspace = true }
 regex = "1"
+tauri-plugin = { workspace = true, features = ["build"] }
 
 [dependencies]
 serde = { workspace = true }

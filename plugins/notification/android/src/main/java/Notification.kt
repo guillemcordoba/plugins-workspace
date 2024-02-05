@@ -81,8 +81,6 @@ class Notification {
     return null
   }
 
-  val isScheduled = schedule != null
-
   companion object {
     fun buildNotificationPendingList(notifications: List<Notification>): List<PendingNotification> {
       val pendingNotifications = mutableListOf<PendingNotification>()
