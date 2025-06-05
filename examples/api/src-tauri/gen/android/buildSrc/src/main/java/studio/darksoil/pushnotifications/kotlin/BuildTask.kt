@@ -16,11 +16,7 @@ open class BuildTask : DefaultTask() {
 
     @TaskAction
     fun assemble() {
-<<<<<<< HEAD:examples/api/src-tauri/gen/android/buildSrc/src/main/java/com/tauri/api/kotlin/BuildTask.kt
         val executable = """pnpm""";
-=======
-        val executable = """npm""";
->>>>>>> push-notifications:examples/api/src-tauri/gen/android/buildSrc/src/main/java/studio/darksoil/pushnotifications/kotlin/BuildTask.kt
         try {
             runTauriCli(executable)
         } catch (e: Exception) {
@@ -36,11 +32,7 @@ open class BuildTask : DefaultTask() {
         val rootDirRel = rootDirRel ?: throw GradleException("rootDirRel cannot be null")
         val target = target ?: throw GradleException("target cannot be null")
         val release = release ?: throw GradleException("release cannot be null")
-<<<<<<< HEAD:examples/api/src-tauri/gen/android/buildSrc/src/main/java/com/tauri/api/kotlin/BuildTask.kt
         val args = listOf("tauri", "android", "android-studio-script");
-=======
-        val args = listOf("run", "tauri", "--", "android", "android-studio-script");
->>>>>>> push-notifications:examples/api/src-tauri/gen/android/buildSrc/src/main/java/studio/darksoil/pushnotifications/kotlin/BuildTask.kt
 
         project.exec {
             workingDir(File(project.projectDir, rootDirRel))
