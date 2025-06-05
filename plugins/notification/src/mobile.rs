@@ -4,9 +4,9 @@
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tauri::{
-    ipc::{Channel as TauriChannel, InvokeBody},
-    plugin::{PersmissionState, PluginApi, PluginHandle},
-    AppHandle, Manager, Runtime,
+    ipc::{Channel as TauriChannel, InvokeResponseBody},
+    plugin::{PermissionState, PluginApi, PluginHandle},
+    AppHandle, Emitter, Manager, Runtime,
 };
 
 use tauri_plugin_notification_models::*;
@@ -49,10 +49,11 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
         RegisterListenerArgs {
             event: String::from("actionPerformed"),
             handler: TauriChannel::new(move |event| {
-                if let InvokeBody::Json(payload) = event {
-                    let n: NotificationActionPerformedPayload = serde_json::from_value(payload)?;
+                if let InvokeResponseBody::Json(payload) = event {
+                    let n: NotificationActionPerformedPayload =
+                        serde_json::from_str(payload.as_str())?;
                     app_handle.manage(n.clone());
-                    app_handle.emit("notification-action-performed", n)?;
+                    app_handle.emit("notification://action-performed", n)?;
                 };
                 Ok(())
             }),
@@ -190,7 +191,7 @@ impl<R: Runtime> Notification<R> {
                         _ => None,
                     };
                     if let Some(t) = token {
-                        app_handle.emit("new-fcm-token", t)?;
+                        app_handle.emit("notification://new-fcm-token", t)?;
                     }
                     Ok(())
                 }),

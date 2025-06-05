@@ -10,10 +10,10 @@
 )]
 
 use serde::Serialize;
-#[cfg(mobile)]
-use tauri::plugin::PluginHandle;
 #[cfg(desktop)]
 use tauri::AppHandle;
+#[cfg(mobile)]
+use tauri::{plugin::PluginHandle, Emitter};
 use tauri::{
     plugin::{Builder, TauriPlugin},
     Manager, RunEvent, Runtime,
@@ -250,7 +250,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
                     app_handle.try_state::<mobile::NotificationActionPerformedPayload>()
                 {
                     app_handle
-                        .emit("notification-action-performed", n.inner().clone())
+                        .emit("notification://action-performed", n.inner().clone())
                         .unwrap();
                 }
             }

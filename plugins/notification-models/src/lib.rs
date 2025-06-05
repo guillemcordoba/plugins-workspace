@@ -8,7 +8,7 @@ use serde::{de::Error as DeError, Deserialize, Deserializer, Serialize, Serializ
 
 use url::Url;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Attachment {
     id: String,
@@ -21,7 +21,7 @@ impl Attachment {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduleInterval {
     pub year: Option<u8>,
@@ -33,7 +33,7 @@ pub struct ScheduleInterval {
     pub second: Option<u8>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ScheduleEvery {
     Year,
     Month,
@@ -93,7 +93,7 @@ impl<'de> Deserialize<'de> for ScheduleEvery {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum Schedule {
     #[serde(rename_all = "camelCase")]
@@ -145,7 +145,7 @@ mod iso8601 {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationData {
     #[serde(default = "default_id")]
