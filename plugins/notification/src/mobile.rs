@@ -184,10 +184,12 @@ impl<R: Runtime> Notification<R> {
                 event: String::from("newFcmToken"),
                 handler: TauriChannel::new(move |event| {
                     let token = match event {
-                        InvokeBody::Json(payload) => payload
-                            .get("token")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_owned()),
+                        tauri::ipc::InvokeResponseBody::Json(payload) => {
+                            serde_json::from_str::<serde_json::Value>(payload.as_str())?
+                                .get("token")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_owned())
+                        }
                         _ => None,
                     };
                     if let Some(t) = token {

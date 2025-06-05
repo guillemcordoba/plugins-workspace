@@ -307,7 +307,7 @@ impl ActiveNotification {
     }
 }
 
-#[cfg(mobile)]
+#[cfg(any(target_os = "android", target_os = "ios"))]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActionType {
@@ -320,7 +320,7 @@ pub struct ActionType {
     hidden_previews_show_subtitle: bool,
 }
 
-#[cfg(mobile)]
+#[cfg(any(target_os = "android", target_os = "ios"))]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Action {
