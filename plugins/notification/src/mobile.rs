@@ -81,45 +81,6 @@ impl<R: Runtime> Notification<R> {
         crate::NotificationBuilder::new(self.0.clone())
     }
 
-    pub fn register_for_push_notifications(&self) -> crate::Result<String> {
-        let app_handle = self.0.app().clone();
-        self.0.run_mobile_plugin::<()>(
-            "registerListener",
-            RegisterListenerArgs {
-                event: String::from("newFcmToken"),
-                handler: TauriChannel::new(move |event| {
-                    let token = match event {
-                        InvokeBody::Json(payload) => payload
-                            .get("token")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_owned()),
-                        _ => None,
-                    };
-                    if let Some(t) = token {
-                        app_handle.emit("new-fcm-token", t)?;
-                    }
-                    Ok(())
-                }),
-            },
-        )?;
-
-        let token_value = self
-            .0
-            .run_mobile_plugin::<serde_json::Value>("registerForPushNotifications", ())?;
-
-        match token_value.get("token") {
-            None => Err(crate::Error::RegisterWithFcmError(String::from(
-                "Error registering with FCM",
-            ))),
-            Some(v) => match v {
-                serde_json::Value::String(t) => Ok(t.clone()),
-                _ => Err(crate::Error::RegisterWithFcmError(String::from(
-                    "Error registering with FCM",
-                ))),
-            },
-        }
-    }
-
     pub fn request_permission(&self) -> crate::Result<PermissionState> {
         self.0
             .run_mobile_plugin::<PermissionResponse>("requestPermissions", ())
@@ -211,6 +172,46 @@ impl<R: Runtime> Notification<R> {
         self.0
             .run_mobile_plugin("listChannels", ())
             .map_err(Into::into)
+    }
+
+    #[cfg(feature = "push-notifications-fcm")]
+    pub fn register_for_push_notifications(&self) -> crate::Result<String> {
+        let app_handle = self.0.app().clone();
+        self.0.run_mobile_plugin::<()>(
+            "registerListener",
+            RegisterListenerArgs {
+                event: String::from("newFcmToken"),
+                handler: TauriChannel::new(move |event| {
+                    let token = match event {
+                        InvokeBody::Json(payload) => payload
+                            .get("token")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_owned()),
+                        _ => None,
+                    };
+                    if let Some(t) = token {
+                        app_handle.emit("new-fcm-token", t)?;
+                    }
+                    Ok(())
+                }),
+            },
+        )?;
+
+        let token_value = self
+            .0
+            .run_mobile_plugin::<serde_json::Value>("registerForPushNotifications", ())?;
+
+        match token_value.get("token") {
+            None => Err(crate::Error::RegisterWithFcmError(String::from(
+                "Error registering with FCM",
+            ))),
+            Some(v) => match v {
+                serde_json::Value::String(t) => Ok(t.clone()),
+                _ => Err(crate::Error::RegisterWithFcmError(String::from(
+                    "Error registering with FCM",
+                ))),
+            },
+        }
     }
 }
 

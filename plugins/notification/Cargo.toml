@@ -55,3 +55,4 @@ maplit = "1"
 
 [features]
 windows7-compat = ["win7-notifications", "windows-version"]
+push-notifications-fcm = []
