@@ -9,7 +9,7 @@ mod tray;
 use serde::Serialize;
 use tauri::{
     webview::{PageLoadEvent, WebviewWindowBuilder},
-    App, AppHandle, Emitter, Listener, RunEvent, WebviewUrl,
+    App, AppHandle, Emitter, Listener, Manager, RunEvent, WebviewUrl,
 };
 
 #[derive(Clone, Serialize)]
@@ -142,7 +142,7 @@ pub fn run() {
                 .show()
                 .expect("Failed to send notification");
             #[cfg(mobile)]
-            app.listen_global("notification-action-performed", move |event| {
+            app.listen("notification-action-performed", move |event| {
                 if let Ok(notification_action_performed_payload) = serde_json::from_str::<
                     tauri_plugin_notification::NotificationActionPerformedPayload,
                 >(event.payload())
@@ -151,7 +151,7 @@ pub fn run() {
                 }
             });
 
-            app.listen_global("new-fcm-token", move |event| {
+            app.listen("new-fcm-token", move |event| {
                 if let Ok(token) = serde_json::from_str::<String>(event.payload()) {
                     println!("new-fcm-token {:?}", token);
                 }
@@ -213,8 +213,8 @@ pub fn run() {
     })
 }
 
-use jni::objects::JClass;
-use jni::JNIEnv;
+// use jni::objects::JClass;
+// use jni::JNIEnv;
 use tauri_plugin_notification::{NotificationData, NotificationExt};
 
 #[tauri_plugin_notification::modify_push_notification]
