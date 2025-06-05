@@ -22,6 +22,7 @@ android = { level = "full", notes = "" }
 ios = { level = "full", notes = "" }
 
 [build-dependencies]
+regex = "1"
 tauri-plugin = { workspace = true, features = ["build"] }
 
 [dependencies]
@@ -34,6 +35,8 @@ rand = "0.8"
 time = { version = "0.3", features = ["serde", "parsing", "formatting"] }
 url = { version = "2", features = ["serde"] }
 serde_repr = "0.1"
+tauri-plugin-notification-macros = { path = "../notification-macros" }
+tauri-plugin-notification-models = { path = "../notification-models" }
 
 [target.'cfg(target_os = "ios")'.dependencies]
 tauri = { workspace = true, features = ["wry"] }

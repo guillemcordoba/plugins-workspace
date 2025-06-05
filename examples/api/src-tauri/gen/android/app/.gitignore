@@ -1,4 +1,4 @@
-/src/main/java/com/tauri/api/generated
+/src/main/java/studio/darksoil/pushnotifications/generated
 /src/main/jniLibs/**/*.so
 /src/main/assets/tauri.conf.json
 /tauri.build.gradle.kts

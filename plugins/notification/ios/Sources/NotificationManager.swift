@@ -24,12 +24,12 @@ import UserNotifications
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
-    var presentationOptions: UNNotificationPresentationOptions? = nil
+    var presentationOptions: UNNotificationPresentationOptions? = [.alert, .sound]
 
     if notification.request.trigger?.isKind(of: UNPushNotificationTrigger.self) != true {
       presentationOptions = notificationHandler?.willPresent(notification: notification)
     }
-
+  
     completionHandler(presentationOptions ?? [])
   }
 
@@ -38,9 +38,11 @@ import UserNotifications
     didReceive response: UNNotificationResponse,
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
-    if response.notification.request.trigger?.isKind(of: UNPushNotificationTrigger.self) != true {
+    print("dd", response.notification.request.trigger)
+    print("nh", notificationHandler)
+    //if response.notification.request.trigger?.isKind(of: UNPushNotificationTrigger.self) != true {
       notificationHandler?.didReceive(response: response)
-    }
+    //}
 
     completionHandler()
   }

@@ -9,6 +9,7 @@ use tauri::{
 };
 
 use crate::NotificationBuilder;
+use tauri_plugin_notification_models::*;
 
 pub fn init<R: Runtime, C: DeserializeOwned>(
     app: &AppHandle<R>,

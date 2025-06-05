@@ -72,18 +72,18 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
         actionId: actionIdValue,
         inputValue: inputValue,
         notification: toActiveNotification(originalNotificationRequest)
-      ))
+    ))
   }
 
   func toActiveNotification(_ request: UNNotificationRequest) -> ActiveNotification {
-    let notificationRequest = notificationsMap[request.identifier]!
+    let notificationRequest = notificationsMap[request.identifier]
     return ActiveNotification(
       id: Int(request.identifier) ?? -1,
       title: request.content.title,
       body: request.content.body,
-      sound: notificationRequest.sound ?? "",
+      sound: notificationRequest?.sound ?? "",
       actionTypeId: request.content.categoryIdentifier,
-      attachments: notificationRequest.attachments
+      attachments: notificationRequest?.attachments
     )
   }
 

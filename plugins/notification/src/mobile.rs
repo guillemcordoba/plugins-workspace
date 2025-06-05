@@ -2,15 +2,30 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-use serde::{de::DeserializeOwned, Deserialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tauri::{
-    plugin::{PermissionState, PluginApi, PluginHandle},
-    AppHandle, Runtime,
+    ipc::{Channel as TauriChannel, InvokeBody},
+    plugin::{PersmissionState, PluginApi, PluginHandle},
+    AppHandle, Manager, Runtime,
 };
 
-use crate::models::*;
+use tauri_plugin_notification_models::*;
 
 use std::collections::HashMap;
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegisterListenerArgs {
+    pub event: String,
+    pub handler: TauriChannel,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationActionPerformedPayload {
+    pub action_id: String,
+    pub notification: NotificationData,
+}
 
 #[cfg(target_os = "android")]
 const PLUGIN_IDENTIFIER: &str = "app.tauri.notification";
@@ -20,13 +35,30 @@ tauri::ios_plugin_binding!(init_plugin_notification);
 
 // initializes the Kotlin or Swift plugin classes
 pub fn init<R: Runtime, C: DeserializeOwned>(
-    _app: &AppHandle<R>,
+    app: &AppHandle<R>,
     api: PluginApi<R, C>,
 ) -> crate::Result<Notification<R>> {
     #[cfg(target_os = "android")]
     let handle = api.register_android_plugin(PLUGIN_IDENTIFIER, "NotificationPlugin")?;
     #[cfg(target_os = "ios")]
     let handle = api.register_ios_plugin(init_plugin_notification)?;
+
+    let app_handle = app.clone();
+    handle.run_mobile_plugin::<()>(
+        "registerListener",
+        RegisterListenerArgs {
+            event: String::from("actionPerformed"),
+            handler: TauriChannel::new(move |event| {
+                if let InvokeBody::Json(payload) = event {
+                    let n: NotificationActionPerformedPayload = serde_json::from_value(payload)?;
+                    app_handle.manage(n.clone());
+                    app_handle.emit("notification-action-performed", n)?;
+                };
+                Ok(())
+            }),
+        },
+    )?;
+
     Ok(Notification(handle))
 }
 
@@ -47,6 +79,45 @@ pub struct Notification<R: Runtime>(PluginHandle<R>);
 impl<R: Runtime> Notification<R> {
     pub fn builder(&self) -> crate::NotificationBuilder<R> {
         crate::NotificationBuilder::new(self.0.clone())
+    }
+
+    pub fn register_for_push_notifications(&self) -> crate::Result<String> {
+        let app_handle = self.0.app().clone();
+        self.0.run_mobile_plugin::<()>(
+            "registerListener",
+            RegisterListenerArgs {
+                event: String::from("newFcmToken"),
+                handler: TauriChannel::new(move |event| {
+                    let token = match event {
+                        InvokeBody::Json(payload) => payload
+                            .get("token")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_owned()),
+                        _ => None,
+                    };
+                    if let Some(t) = token {
+                        app_handle.emit("new-fcm-token", t)?;
+                    }
+                    Ok(())
+                }),
+            },
+        )?;
+
+        let token_value = self
+            .0
+            .run_mobile_plugin::<serde_json::Value>("registerForPushNotifications", ())?;
+
+        match token_value.get("token") {
+            None => Err(crate::Error::RegisterWithFcmError(String::from(
+                "Error registering with FCM",
+            ))),
+            Some(v) => match v {
+                serde_json::Value::String(t) => Ok(t.clone()),
+                _ => Err(crate::Error::RegisterWithFcmError(String::from(
+                    "Error registering with FCM",
+                ))),
+            },
+        }
     }
 
     pub fn request_permission(&self) -> crate::Result<PermissionState> {

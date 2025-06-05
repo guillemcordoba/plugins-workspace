@@ -133,6 +133,39 @@ pub fn run() {
                 }
             });
 
+            app.notification().request_permission()?;
+
+            let h = app.app_handle().clone();
+            h.notification()
+                .builder()
+                .title("Hey!")
+                .show()
+                .expect("Failed to send notification");
+            #[cfg(mobile)]
+            app.listen_global("notification-action-performed", move |event| {
+                if let Ok(notification_action_performed_payload) = serde_json::from_str::<
+                    tauri_plugin_notification::NotificationActionPerformedPayload,
+                >(event.payload())
+                {
+                    println!("onlistener{:?}", notification_action_performed_payload);
+                }
+            });
+
+            app.listen_global("new-fcm-token", move |event| {
+                if let Ok(token) = serde_json::from_str::<String>(event.payload()) {
+                    println!("new-fcm-token {:?}", token);
+                }
+            });
+
+            let h = app.handle().clone();
+            #[cfg(mobile)]
+            tauri::async_runtime::spawn(async move {
+                println!(
+                    "FCMTOKEN {:?}",
+                    h.notification().register_for_push_notifications().unwrap()
+                );
+            });
+
             Ok(())
         })
         .on_page_load(|webview, payload| {
@@ -178,4 +211,17 @@ pub fn run() {
             }
         }
     })
+}
+
+use jni::objects::JClass;
+use jni::JNIEnv;
+use tauri_plugin_notification::{NotificationData, NotificationExt};
+
+#[tauri_plugin_notification::modify_push_notification]
+pub fn modify_push_notification(mut notification: NotificationData) -> NotificationData {
+    //n.title = Some(String::from("AAA"));
+    notification.title = Some(String::from("2AAA"));
+    // let mut extra: HashMap<String, Value> = HashMap::new();
+    // n.extra = extra;
+    notification
 }

@@ -57,6 +57,7 @@ class TauriNotificationManager(
     Logger.debug(Logger.tags("Notification"), "Notification received: " + data.dataString)
     val notificationId =
       data.getIntExtra(NOTIFICATION_INTENT_KEY, Int.MIN_VALUE)
+    Logger.debug(Logger.tags("Notification"), "Notification received: " + notificationId)
     if (notificationId == Int.MIN_VALUE) {
       Logger.debug(Logger.tags("Notification"), "Activity started without notification attached")
       return null
@@ -72,6 +73,7 @@ class TauriNotificationManager(
     dataJson.put("inputValue", input?.toString())
     val menuAction = data.getStringExtra(ACTION_INTENT_KEY)
     dismissVisibleNotification(notificationId)
+    dataJson.put("notificationId", notificationId)
     dataJson.put("actionId", menuAction)
     var request: JSONObject? = null
     try {
@@ -212,6 +214,7 @@ class TauriNotificationManager(
     createActionIntents(notification, mBuilder)
     // notificationId is a unique int for each notification that you must define
     val buildNotification = mBuilder.build()
+    // TODO: comment this iff if it doesn't work
     if (notification.schedule != null) {
       triggerScheduledNotification(buildNotification, notification)
     } else {
@@ -276,7 +279,7 @@ class TauriNotificationManager(
     val schedule = notification.schedule
     dissmissIntent.putExtra(
       NOTIFICATION_IS_REMOVABLE_KEY,
-      schedule == null || schedule.isRemovable()
+      schedule == null// || schedule.isRemovable()
     )
     flags = 0
     if (SDK_INT >= Build.VERSION_CODES.S) {
@@ -301,7 +304,9 @@ class TauriNotificationManager(
     intent.putExtra(ACTION_INTENT_KEY, action)
     intent.putExtra(NOTIFICATION_OBJ_INTENT_KEY, notification.sourceJson)
     val schedule = notification.schedule
-    intent.putExtra(NOTIFICATION_IS_REMOVABLE_KEY, schedule == null || schedule.isRemovable())
+    intent.putExtra(NOTIFICATION_IS_REMOVABLE_KEY, schedule == null 
+      //|| schedule.isRemovable()
+      )
     return intent
   }
 
@@ -310,56 +315,56 @@ class TauriNotificationManager(
    * on a certain date "shape" (such as every first of the month)
    */
   // TODO support different AlarmManager.RTC modes depending on priority
-  @SuppressLint("SimpleDateFormat")
-  private fun triggerScheduledNotification(notification: android.app.Notification, request: Notification) {
-    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-    val schedule = request.schedule
-    val notificationIntent = Intent(
-      context,
-      TimedNotificationPublisher::class.java
-    )
-    notificationIntent.putExtra(NOTIFICATION_INTENT_KEY, request.id)
-    notificationIntent.putExtra(TimedNotificationPublisher.NOTIFICATION_KEY, notification)
-    var flags = PendingIntent.FLAG_CANCEL_CURRENT
-    if (SDK_INT >= Build.VERSION_CODES.S) {
-      flags = flags or PendingIntent.FLAG_MUTABLE
-    }
-    var pendingIntent =
-      PendingIntent.getBroadcast(context, request.id, notificationIntent, flags)
+  // @SuppressLint("SimpleDateFormat")
+  // private fun triggerScheduledNotification(notification: android.app.Notification, request: Notification) {
+  //   val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+  //   val schedule = request.schedule
+  //   val notificationIntent = Intent(
+  //     context,
+  //     TimedNotificationPublisher::class.java
+  //   )
+  //   notificationIntent.putExtra(NOTIFICATION_INTENT_KEY, request.id)
+  //   notificationIntent.putExtra(TimedNotificationPublisher.NOTIFICATION_KEY, notification)
+  //   var flags = PendingIntent.FLAG_CANCEL_CURRENT
+  //   if (SDK_INT >= Build.VERSION_CODES.S) {
+  //     flags = flags or PendingIntent.FLAG_MUTABLE
+  //   }
+  //   var pendingIntent =
+  //     PendingIntent.getBroadcast(context, request.id, notificationIntent, flags)
 
-    when (schedule) {
-      is NotificationSchedule.At -> {
-        if (schedule.date.time < Date().time) {
-          Logger.error(Logger.tags("Notification"), "Scheduled time must be *after* current time", null)
-          return
-        }
-        if (schedule.repeating) {
-          val interval: Long = schedule.date.time - Date().time
-          alarmManager.setRepeating(AlarmManager.RTC, schedule.date.time, interval, pendingIntent)
-        } else {
-          setExactIfPossible(alarmManager, schedule, schedule.date.time, pendingIntent)
-        }
-      }
-      is NotificationSchedule.Interval -> {
-        val trigger = schedule.interval.nextTrigger(Date())
-        notificationIntent.putExtra(TimedNotificationPublisher.CRON_KEY, schedule.interval.toMatchString())
-        pendingIntent =
-          PendingIntent.getBroadcast(context, request.id, notificationIntent, flags)
-        setExactIfPossible(alarmManager, schedule, trigger, pendingIntent)
-        val sdf = SimpleDateFormat("yyyy/MM/dd HH:mm:ss")
-        Logger.debug(
-          Logger.tags("Notification"),
-          "notification " + request.id + " will next fire at " + sdf.format(Date(trigger))
-        )
-      }
-      is NotificationSchedule.Every -> {
-        val everyInterval = getIntervalTime(schedule.interval, schedule.count)
-        val startTime: Long = Date().time + everyInterval
-        alarmManager.setRepeating(AlarmManager.RTC, startTime, everyInterval, pendingIntent)
-      }
-      else -> {}
-    }
-  }
+  //   when (schedule) {
+  //     is NotificationSchedule.At -> {
+  //       if (schedule.date.time < Date().time) {
+  //         Logger.error(Logger.tags("Notification"), "Scheduled time must be *after* current time", null)
+  //         return
+  //       }
+  //       if (schedule.repeating) {
+  //         val interval: Long = schedule.date.time - Date().time
+  //         alarmManager.setRepeating(AlarmManager.RTC, schedule.date.time, interval, pendingIntent)
+  //       } else {
+  //         setExactIfPossible(alarmManager, schedule, schedule.date.time, pendingIntent)
+  //       }
+  //     }
+  //     is NotificationSchedule.Interval -> {
+  //       val trigger = schedule.interval.nextTrigger(Date())
+  //       notificationIntent.putExtra(TimedNotificationPublisher.CRON_KEY, schedule.interval.toMatchString())
+  //       pendingIntent =
+  //         PendingIntent.getBroadcast(context, request.id, notificationIntent, flags)
+  //       setExactIfPossible(alarmManager, schedule, trigger, pendingIntent)
+  //       val sdf = SimpleDateFormat("yyyy/MM/dd HH:mm:ss")
+  //       Logger.debug(
+  //         Logger.tags("Notification"),
+  //         "notification " + request.id + " will next fire at " + sdf.format(Date(trigger))
+  //       )
+  //     }
+  //     is NotificationSchedule.Every -> {
+  //       val everyInterval = getIntervalTime(schedule.interval, schedule.count)
+  //       val startTime: Long = Date().time + everyInterval
+  //       alarmManager.setRepeating(AlarmManager.RTC, startTime, everyInterval, pendingIntent)
+  //     }
+  //     else -> {}
+  //   }
+  // }
 
   @SuppressLint("ObsoleteSdkInt", "MissingPermission")
   private fun setExactIfPossible(
@@ -554,14 +559,15 @@ class LocalNotificationRestoreReceiver : BroadcastReceiver() {
     for (id in ids) {
       val notification = storage.getSavedNotification(id) ?: continue
       val schedule = notification.schedule
-      if (schedule != null && schedule is NotificationSchedule.At) {
-        val at: Date = schedule.date
-        if (at.before(Date())) {
-          // modify the scheduled date in order to show notifications that would have been delivered while device was off.
-          val newDateTime = Date().time + 15 * 1000
-          schedule.date = Date(newDateTime)
-          updatedNotifications.add(notification)
-        }
+      if (schedule != null //&& schedule is NotificationSchedule.At
+      ) {
+        // val at: Date = schedule.date
+        // if (at.before(Date())) {
+        //   // modify the scheduled date in order to show notifications that would have been delivered while device was off.
+        //   val newDateTime = Date().time + 15 * 1000
+        //   schedule.date = Date(newDateTime)
+        //   updatedNotifications.add(notification)
+        // }
       }
       notifications.add(notification)
     }
