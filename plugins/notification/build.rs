@@ -5,6 +5,7 @@ use regex::Regex;
 use std::{
     fs::{self, OpenOptions},
     io::Write,
+    path::PathBuf,
 };
 
 const COMMANDS: &[&str] = &[
@@ -26,29 +27,114 @@ const COMMANDS: &[&str] = &[
     "permission_state",
 ];
 
-fn main() {
-    let is_targeting_android = std::env::var("TARGET").unwrap().contains("android");
-    if is_targeting_android {
-        let android_library = std::env::var("WRY_ANDROID_LIBRARY")
-            .expect("Expected WRY_ANDROID_LIBRARY to be set when targeting android.");
+fn google_services_path() -> Result<Option<PathBuf>, String> {
+    let Ok(android_project_path_str) = std::env::var("TAURI_ANDROID_PROJECT_PATH") else {
+        return Err(String::from(
+            "TAURI_ANDROID_PROJECT_PATH is not defined: are you building with tauri build?",
+        ));
+    };
+    println!(
+        "cargo:rerun-if-changed={}/google-services.json",
+        android_project_path_str
+    );
+    println!(
+        "cargo:rerun-if-changed={}/app/google-services.json",
+        android_project_path_str
+    );
+    let android_project_path = PathBuf::from(android_project_path_str);
 
-        let push_notifications_service_path = "android/src/main/java/PushNotificationsService.kt";
-        let re = Regex::new(r#"loadLibrary\(".*?"\)"#).unwrap();
-
-        let contents = fs::read_to_string(push_notifications_service_path)
-            .expect("Couldn't find PushNotificationsService");
-        let new = re.replace(
-            contents.as_str(),
-            format!("loadLibrary(\"{android_library}\")").as_str(),
+    if fs::exists(android_project_path.join("google-services.json"))
+        .map_err(|err| format!("{err:?}"))?
+    {
+        Ok(Some(android_project_path.join("google-services.json")))
+    } else if fs::exists(
+        android_project_path
+            .join("app")
+            .join("google-services.json"),
+    )
+    .map_err(|err| format!("{err:?}"))?
+    {
+        Ok(Some(
+            android_project_path
+                .join("app")
+                .join("google-services.json"),
+        ))
+    } else {
+        println!(
+            "cargo::warning={}",
+            "No google-services.json file was not found. To enable push notifications in android, make sure to download the google-services.json file and place it in src-tauri/gen/android."
         );
-        let mut file = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .open(push_notifications_service_path)
-            .expect("Failed to open PushNotificationsService");
-        file.write(new.as_bytes())
-            .expect("Failed to write to PushNotificationsService");
+        Ok(None)
     }
+}
+
+fn modify_file(path: PathBuf, regex: Regex, replace: String) {
+    let contents = fs::read_to_string(path.clone()).expect("Couldn't find file");
+    let new = regex.replace(contents.as_str(), replace.as_str());
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(path)
+        .expect("Failed to open file");
+    file.write(new.as_bytes()).expect("Failed to write to file");
+}
+
+#[cfg(feature = "push-notifications-fcm")]
+fn modify_android_sources() {
+    use serde_json::Value;
+
+    let android_library = std::env::var("WRY_ANDROID_LIBRARY")
+        .expect("Expected WRY_ANDROID_LIBRARY to be set when targeting android.");
+
+    modify_file(
+        PathBuf::from("android/src/main/java/PushNotificationsService.kt"),
+        Regex::new(r#"loadLibrary\(".*?"\)"#).unwrap(),
+        format!("loadLibrary(\"{android_library}\")"),
+    );
+
+    if let Some(google_services_file) = google_services_path().unwrap() {
+        let google_services = std::fs::read_to_string(google_services_file)
+            .expect("Failed to read google-services.json");
+        let json: Value = serde_json::from_str(google_services.as_str())
+            .expect("google-services.json file does not contain a JSON object.");
+        let Value::String(project_id) = json["project_info"]["project_id"].clone() else {
+            panic!("The project_info.project_id property in the google-services.json file is not a string.");
+        };
+        let Value::String(app_id) = json["client"][0]["client_info"]["mobilesdk_app_id"].clone()
+        else {
+            panic!("The client[0].client_info.mobilesdk_app_id property in the google-services.json file is not a string.");
+        };
+        let Value::String(api_key) = json["client"][0]["api_key"][0]["current_key"].clone() else {
+            panic!("The client[0].api_key[0].current_key property in the google-services.json file is not a string.");
+        };
+
+        modify_file(
+            PathBuf::from("android/src/main/java/NotificationPlugin.kt"),
+            Regex::new(r#"<API_KEY>"#).unwrap(),
+            api_key,
+        );
+        modify_file(
+            PathBuf::from("android/src/main/java/NotificationPlugin.kt"),
+            Regex::new(r#"<PROJECT_ID>"#).unwrap(),
+            project_id,
+        );
+        modify_file(
+            PathBuf::from("android/src/main/java/NotificationPlugin.kt"),
+            Regex::new(r#"<APP_ID>"#).unwrap(),
+            app_id,
+        );
+    }
+}
+
+fn main() {
+    #[cfg(feature = "push-notifications-fcm")]
+    {
+        let is_targeting_android = std::env::var("TARGET").unwrap().contains("android");
+        if is_targeting_android {
+            modify_android_sources();
+        }
+    }
+
     let result = tauri_plugin::Builder::new(COMMANDS)
         .global_api_script_path("./api-iife.js")
         .android_path("android")

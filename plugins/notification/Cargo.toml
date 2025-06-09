@@ -24,6 +24,7 @@ ios = { level = "full", notes = "" }
 [build-dependencies]
 regex = "1"
 tauri-plugin = { workspace = true, features = ["build"] }
+serde_json = "1"
 
 [dependencies]
 serde = { workspace = true }

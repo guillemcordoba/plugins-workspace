@@ -47,12 +47,3 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     implementation(project(":tauri-android"))
 }
-
-// Apply Google services plugin if the google-services.json file exists in the app project
-afterEvaluate {
-    // Check if the root project (the app) has the google services file property
-    if (rootProject.hasProperty("googleServicesFile")) {
-        // Only apply if the property exists, indicating google-services.json is present
-        apply(plugin = "com.google.gms.google-services")
-    }
-}

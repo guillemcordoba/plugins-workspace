@@ -111,10 +111,20 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
       getConfig(PluginConfig::class.java)
     )
     manager.createNotificationChannel()
-    
     this.manager = manager
     
     notificationManager = activity.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    // This may be replaced at compile time by build.rs
+    var API_KEY = "<API_KEY>"
+
+    if (API_KEY != "<API_KEY>") {
+      val options = FirebaseOptions.Builder().setApiKey(API_KEY)
+          .setProjectId("<PROJECT_ID>")
+          .setApplicationId("<APP_ID>").build()
+
+      FirebaseApp.initializeApp(activity, options)
+    }
 
     val intent = activity.intent
     intent?.let {
