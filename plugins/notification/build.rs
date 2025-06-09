@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 use regex::Regex;
+use serde_json::Value;
 use std::{
     fs::{self, OpenOptions},
     io::Write,
@@ -81,8 +82,6 @@ fn modify_file(path: PathBuf, regex: Regex, replace: String) {
 
 #[cfg(feature = "push-notifications-fcm")]
 fn modify_android_sources() {
-    use serde_json::Value;
-
     let android_library = std::env::var("WRY_ANDROID_LIBRARY")
         .expect("Expected WRY_ANDROID_LIBRARY to be set when targeting android.");
 
@@ -110,18 +109,18 @@ fn modify_android_sources() {
 
         modify_file(
             PathBuf::from("android/src/main/java/NotificationPlugin.kt"),
-            Regex::new(r#"<API_KEY>"#).unwrap(),
-            api_key,
+            Regex::new(r#"var API_KEY = ".*?""#).unwrap(),
+            format!(r#"var API_KEY = "{}""#, api_key),
         );
         modify_file(
             PathBuf::from("android/src/main/java/NotificationPlugin.kt"),
-            Regex::new(r#"<PROJECT_ID>"#).unwrap(),
-            project_id,
+            Regex::new(r#"var PROJECT_ID = ".*?""#).unwrap(),
+            format!(r#"var PROJECT_ID = "{}""#, project_id),
         );
         modify_file(
             PathBuf::from("android/src/main/java/NotificationPlugin.kt"),
-            Regex::new(r#"<APP_ID>"#).unwrap(),
-            app_id,
+            Regex::new(r#"var APP_ID = ".*?""#).unwrap(),
+            format!(r#"var APP_ID = "{}""#, app_id),
         );
     }
 }

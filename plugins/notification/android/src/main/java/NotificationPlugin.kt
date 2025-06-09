@@ -117,11 +117,13 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
 
     // This may be replaced at compile time by build.rs
     var API_KEY = "<API_KEY>"
+    var PROJECT_ID = "<PROJECT_ID>"
+    var APP_ID = "<APP_ID>"
 
     if (API_KEY != "<API_KEY>") {
       val options = FirebaseOptions.Builder().setApiKey(API_KEY)
-          .setProjectId("<PROJECT_ID>")
-          .setApplicationId("<APP_ID>").build()
+          .setProjectId(PROJECT_ID)
+          .setApplicationId(APP_ID).build()
 
       FirebaseApp.initializeApp(activity, options)
     }
