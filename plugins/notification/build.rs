@@ -6,7 +6,7 @@ use serde_json::Value;
 use std::{
     fs::{self, OpenOptions},
     io::Write,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 const COMMANDS: &[&str] = &[
@@ -69,6 +69,20 @@ fn google_services_path() -> Result<Option<PathBuf>, String> {
     }
 }
 
+fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
+    fs::create_dir_all(&dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
+}
+
 fn modify_file(path: PathBuf, regex: Regex, replace: String) {
     let contents = fs::read_to_string(path.clone()).expect("Couldn't find file");
     let new = regex.replace(contents.as_str(), replace.as_str());
@@ -85,8 +99,13 @@ fn modify_android_sources() {
     let android_library = std::env::var("WRY_ANDROID_LIBRARY")
         .expect("Expected WRY_ANDROID_LIBRARY to be set when targeting android.");
 
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").expect("No OUT_DIR variable found"));
+
+    copy_dir_all(PathBuf::from("android"), out_dir.join("android"))
+        .expect("Failed to copy over the android folder");
+
     modify_file(
-        PathBuf::from("android/src/main/java/PushNotificationsService.kt"),
+        out_dir.join("android/src/main/java/PushNotificationsService.kt"),
         Regex::new(r#"loadLibrary\(".*?"\)"#).unwrap(),
         format!("loadLibrary(\"{android_library}\")"),
     );
@@ -108,17 +127,17 @@ fn modify_android_sources() {
         };
 
         modify_file(
-            PathBuf::from("android/src/main/java/NotificationPlugin.kt"),
+            out_dir.join("android/src/main/java/NotificationPlugin.kt"),
             Regex::new(r#"var API_KEY = ".*?""#).unwrap(),
             format!(r#"var API_KEY = "{}""#, api_key),
         );
         modify_file(
-            PathBuf::from("android/src/main/java/NotificationPlugin.kt"),
+            out_dir.join("android/src/main/java/NotificationPlugin.kt"),
             Regex::new(r#"var PROJECT_ID = ".*?""#).unwrap(),
             format!(r#"var PROJECT_ID = "{}""#, project_id),
         );
         modify_file(
-            PathBuf::from("android/src/main/java/NotificationPlugin.kt"),
+            out_dir.join("android/src/main/java/NotificationPlugin.kt"),
             Regex::new(r#"var APP_ID = ".*?""#).unwrap(),
             format!(r#"var APP_ID = "{}""#, app_id),
         );
@@ -126,17 +145,23 @@ fn modify_android_sources() {
 }
 
 fn main() {
+    let mut android_path = String::from("android");
+
     #[cfg(feature = "push-notifications-fcm")]
     {
         let is_targeting_android = std::env::var("TARGET").unwrap().contains("android");
         if is_targeting_android {
             modify_android_sources();
+            android_path = format!(
+                "{}/android",
+                std::env::var("OUT_DIR").expect("No OUT_DIR variable found")
+            );
         }
     }
 
     let result = tauri_plugin::Builder::new(COMMANDS)
         .global_api_script_path("./api-iife.js")
-        .android_path("android")
+        .android_path(android_path)
         .ios_path("ios")
         .try_build();
 
