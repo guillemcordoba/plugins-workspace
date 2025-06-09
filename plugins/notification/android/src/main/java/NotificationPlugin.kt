@@ -24,6 +24,9 @@ import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import app.tauri.Logger
 import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
+import com.google.firebase.installations.FirebaseInstallations
 
 const val LOCAL_NOTIFICATIONS = "permissionState"
 

@@ -32,6 +32,7 @@ tauri-plugin-http = { path = "../../../plugins/http", features = [
 ], version = "2.4.4" }
 tauri-plugin-notification = { path = "../../../plugins/notification", version = "2.2.2", features = [
   "windows7-compat",
+  "push-notifications-fcm",
 ] }
 tauri-plugin-os = { path = "../../../plugins/os", version = "2.2.1" }
 tauri-plugin-process = { path = "../../../plugins/process", version = "2.2.1" }

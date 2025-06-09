@@ -11,7 +11,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
 
     companion object {
         init {
-            System.loadLibrary("api_lib")
+            System.loadLibrary("tauri_app_lib")
         }
     }
 

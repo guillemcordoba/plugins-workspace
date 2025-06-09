@@ -213,8 +213,8 @@ pub fn run() {
     })
 }
 
-// use jni::objects::JClass;
-// use jni::JNIEnv;
+use jni::objects::JClass;
+use jni::JNIEnv;
 use tauri_plugin_notification::{NotificationData, NotificationExt};
 
 #[tauri_plugin_notification::modify_push_notification]
