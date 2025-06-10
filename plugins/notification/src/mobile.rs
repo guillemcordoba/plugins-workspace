@@ -181,7 +181,7 @@ impl<R: Runtime> Notification<R> {
             .0
             .run_mobile_plugin::<serde_json::Value>("fcmProjectId", ())?;
 
-        match fcm_project_id.get("fcmProjectId") {
+        match fcm_project_id_value.get("fcmProjectId") {
             None => Err(crate::Error::GetFcmProjectIdError(String::from(
                 "Error getting the FCM project_id",
             ))),
