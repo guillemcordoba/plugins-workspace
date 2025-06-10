@@ -85,7 +85,7 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result
 
 fn modify_file(path: PathBuf, regex: Regex, replace: String) {
     let contents = fs::read_to_string(path.clone()).expect("Couldn't find file");
-    let new = regex.replace(contents.as_str(), replace.as_str());
+    let new = regex.replace_all(contents.as_str(), replace.as_str());
     let mut file = OpenOptions::new()
         .write(true)
         .truncate(true)

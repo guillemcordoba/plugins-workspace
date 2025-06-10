@@ -165,6 +165,14 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
       invoke.resolve(data)
     }
   }
+
+  @Command
+  fun fcmProjectId(invoke: Invoke) {
+    var PROJECT_ID = "<PROJECT_ID>"
+    val data = JSObject()
+    data.put("fcmProjectId", PROJECT_ID)
+    invoke.resolve(data)
+  }
   
   @Command
   fun show(invoke: Invoke) {

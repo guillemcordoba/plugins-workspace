@@ -13,8 +13,14 @@ pub enum Error {
     #[cfg(mobile)]
     #[error(transparent)]
     PluginInvoke(#[from] tauri::plugin::mobile::PluginInvokeError),
-    #[error("Error registering with FCM")]
+
+    #[cfg(feature = "push-notifications-fcm")]
+    #[error("Error registering with FCM: {0}")]
     RegisterWithFcmError(String),
+
+    #[cfg(feature = "push-notifications-fcm")]
+    #[error("Error getting the FCM project id: {0}")]
+    GetFcmProjectIdError(String),
 }
 
 impl Serialize for Error {

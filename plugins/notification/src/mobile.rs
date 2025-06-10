@@ -176,6 +176,25 @@ impl<R: Runtime> Notification<R> {
     }
 
     #[cfg(feature = "push-notifications-fcm")]
+    pub fn fcm_project_id(&self) -> crate::Result<String> {
+        let fcm_project_id_value = self
+            .0
+            .run_mobile_plugin::<serde_json::Value>("fcmProjectId", ())?;
+
+        match fcm_project_id.get("fcmProjectId") {
+            None => Err(crate::Error::GetFcmProjectIdError(String::from(
+                "Error getting the FCM project_id",
+            ))),
+            Some(v) => match v {
+                serde_json::Value::String(t) => Ok(t.clone()),
+                _ => Err(crate::Error::GetFcmProjectIdError(String::from(
+                    "Error getting the FCM project_id",
+                ))),
+            },
+        }
+    }
+
+    #[cfg(feature = "push-notifications-fcm")]
     pub fn register_for_push_notifications(&self) -> crate::Result<String> {
         let app_handle = self.0.app().clone();
         self.0.run_mobile_plugin::<()>(
