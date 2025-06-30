@@ -7,6 +7,7 @@ import app.tauri.plugin.JSObject
 import app.tauri.plugin.Channel
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.jsonMapper
+import com.fasterxml.jackson.module.kotlin.readValue 
 
 class PushNotificationsService(): FirebaseMessagingService()  {
 
