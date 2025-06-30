@@ -53,11 +53,15 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         val d = data.toString()
 
         Log.i("PushNotificationService ", "data:: $d")
-        val notification = modifypushnotification(data.toString())
-        Log.i("PushNotificationService ", "Notifications :: $notification")
-        val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
-        modifiedNotification.sourceJson = notification
-        manager.schedule(modifiedNotification)
+        val notifications = modifypushnotification(data.toString())
+        Log.i("PushNotificationService ", "Notifications :: $notifications")
+
+        val modifiedNotifications: List<Notification> = jsonMapper().readValue(notification)
+        for (notification in modifiedNotifications) {
+            notification.sourceJson = jsonMapper().writeValueAsString(notification)
+            // modifiedNotification.sourceJson = notification
+            manager.schedule(modifiedNotification)
+        }
     }
 
     private external fun modifypushnotification(notification: String): String

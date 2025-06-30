@@ -218,10 +218,10 @@ use jni::JNIEnv;
 use tauri_plugin_notification::{NotificationData, NotificationExt};
 
 #[tauri_plugin_notification::modify_push_notification]
-pub fn modify_push_notification(mut notification: NotificationData) -> NotificationData {
+pub fn modify_push_notification(mut notification: NotificationData) -> Vec<NotificationData> {
     //n.title = Some(String::from("AAA"));
     notification.title = Some(String::from("2AAA"));
     // let mut extra: HashMap<String, Value> = HashMap::new();
     // n.extra = extra;
-    notification
+    vec![notification]
 }

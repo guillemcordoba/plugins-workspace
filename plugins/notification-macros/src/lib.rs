@@ -48,7 +48,7 @@ pub fn modify_push_notification(_args: TokenStream, input: TokenStream) -> Token
             mut env: jni::JNIEnv<'local>,
             class: jni::objects::JClass<'local>,
             jnotification: jni::objects::JString<'local>,
-            main: fn(tauri_plugin_notification::NotificationData) -> tauri_plugin_notification::NotificationData,
+            main: fn(tauri_plugin_notification::NotificationData) -> Vec<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
             let notification: String = env
                 .get_string(&jnotification)
@@ -57,9 +57,9 @@ pub fn modify_push_notification(_args: TokenStream, input: TokenStream) -> Token
 
             let notification_data: tauri_plugin_notification::NotificationData = serde_json::from_str(notification.as_str()).expect("Can't convert notification");
 
-            let modified_notification = main(notification_data);
+            let modified_notifications = main(notification_data);
 
-            let jstring: jni::objects::JString = env.new_string(serde_json::to_string(&modified_notification).expect("Can't serialize NotificationData").clone()).expect("Coulnd't reserve new string");
+            let jstring: jni::objects::JString = env.new_string(serde_json::to_string(&modified_notifications).expect("Can't serialize NotificationData").clone()).expect("Coulnd't reserve new string");
 
             jstring
         }
@@ -113,14 +113,14 @@ pub fn modify_push_notification(_args: TokenStream, input: TokenStream) -> Token
         }
         #[cfg(target_os = "ios")]
         #[no_mangle]
-        pub unsafe extern "C" fn modify_notification(notification_str: RustByteSlice) -> *mut tauri_plugin_notification::NotificationData {
+        pub unsafe extern "C" fn modify_notification(notification_str: RustByteSlice) -> *mut Vec<tauri_plugin_notification::NotificationData> {
             let notification: tauri_plugin_notification::NotificationData = serde_json::from_str(notification_str.as_str()).unwrap();
 
-            let new_notification = #fn_name(notification);
+            let new_notifications = #fn_name(notification);
 
-           // let new_notification_str = serde_json::to_string(&new_notification).unwrap();
-            //let s = &*new_notification_str;
-            let boxed_data = Box::new(new_notification);
+            // let new_notification_str = serde_json::to_string(&new_notification).unwrap();
+            // let s = &*new_notification_str;
+            let boxed_data = Box::new(new_notifications);
             Box::into_raw(boxed_data)
         }
 
