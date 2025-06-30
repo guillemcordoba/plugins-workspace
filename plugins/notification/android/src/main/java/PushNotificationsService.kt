@@ -61,7 +61,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         val mapper = jacksonObjectMapper()
 
         // val type = jsonMapper().getTypeFactory().constructCollectionType(List::class.java, Notification::class.java)
-        val modifiedNotifications = mapper.readValue<List<Notification>>(notifications)
+        val modifiedNotifications: List<Notification> = mapper.readValue(notifications, Array<Notification>::class.java).toList()
         for (notification in modifiedNotifications) {
             notification.sourceJson = jsonMapper().writeValueAsString(notification)
             manager.schedule(notification)
