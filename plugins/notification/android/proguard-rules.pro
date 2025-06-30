@@ -22,3 +22,5 @@
 -keep class app.tauri.notification.NotificationScheduleDeserializer {
     public <methods>;
 }
+
+-keep class * implements com.fasterxml.jackson.core.type.TypeReference
