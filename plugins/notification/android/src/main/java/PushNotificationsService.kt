@@ -6,6 +6,7 @@ import com.google.firebase.messaging.RemoteMessage
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Channel
 import com.fasterxml.jackson.module.kotlin.jsonMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 
 class PushNotificationsService(): FirebaseMessagingService()  {
@@ -58,7 +59,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         Log.i("PushNotificationService ", "Notifications :: $notifications")
 
         // val type = jsonMapper().getTypeFactory().constructCollectionType(List::class.java, Notification::class.java)
-        val modifiedNotifications = jsonMapper().readValue<List<Notification>>(notifications)
+        val modifiedNotifications = jacksonObjectMapper().readValue<List<Notification>>(notifications)
         for (notification in modifiedNotifications) {
             notification.sourceJson = jsonMapper().writeValueAsString(notification)
             manager.schedule(notification)
