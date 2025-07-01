@@ -48,7 +48,9 @@ class NotificationService: UNNotificationServiceExtension {
             
             notification_destroy(n)
 
-            contentHandler(bestAttemptContent)
+            if !(bestAttemptContent.title == nil && bestAttemptContent.body == nil) {
+                contentHandler(bestAttemptContent)
+            }
         }
 
     }

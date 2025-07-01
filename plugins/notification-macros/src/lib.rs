@@ -13,7 +13,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             app_tauri,
             notification,
             PushNotificationsService,
-            modifypushnotification,
+            receivepushnotification,
             [jni::objects::JString<'local>],
             jni::objects::JString<'local>,
             [#fn_name]
@@ -44,11 +44,11 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         // }
 
         #[cfg(target_os = "android")]
-        unsafe fn modifypushnotification<'local>(
+        unsafe fn receivepushnotification<'local>(
             mut env: jni::JNIEnv<'local>,
             class: jni::objects::JClass<'local>,
             jnotification: jni::objects::JString<'local>,
-            main: fn(tauri_plugin_notification::NotificationData) -> tauri_plugin_notification::NotificationData,
+            main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
             let notification: String = env
                 .get_string(&jnotification)
@@ -57,9 +57,12 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
 
             let notification_data: tauri_plugin_notification::NotificationData = serde_json::from_str(notification.as_str()).expect("Can't convert notification");
 
-            let modified_notification = main(notification_data);
+            let received_notification = match main(notification_data) {
+                Some(n) => n,
+                None => tauri_plugin_notification::NotificationData::default() 
+            };
 
-            let jstring: jni::objects::JString = env.new_string(serde_json::to_string(&modified_notification).expect("Can't serialize NotificationData").clone()).expect("Coulnd't reserve new string");
+            let jstring: jni::objects::JString = env.new_string(serde_json::to_string(&received_notification).expect("Can't serialize NotificationData").clone()).expect("Coulnd't reserve new string");
 
             jstring
         }
@@ -116,7 +119,10 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         pub unsafe extern "C" fn receive_notification(notification_str: RustByteSlice) -> *mut tauri_plugin_notification::NotificationData {
             let notification: tauri_plugin_notification::NotificationData = serde_json::from_str(notification_str.as_str()).unwrap();
 
-            let new_notification = #fn_name(notification);
+            let new_notification = match #fn_name(notification) {
+                Some(n) => n,
+                None => tauri_plugin_notification::NotificationData::default()
+            };
 
            // let new_notification_str = serde_json::to_string(&new_notification).unwrap();
             //let s = &*new_notification_str;
