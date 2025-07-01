@@ -1,8 +1,8 @@
 # Uncomment the next line to define a global platform for your project
 
-target 'pushnotifications_iOS' do
-platform :ios, '13.0'
-  # Pods for pushnotifications_iOS
+target 'api_iOS' do
+platform :ios, '14.0'
+  # Pods for api_iOS
 end
 
 target 'pushnotifications_macOS' do
