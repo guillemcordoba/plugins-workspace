@@ -28,7 +28,7 @@ mod desktop;
 mod mobile;
 #[cfg(mobile)]
 pub use mobile::NotificationActionPerformedPayload;
-pub use tauri_plugin_notification_macros::modify_push_notification;
+pub use tauri_plugin_notification_macros::receive_push_notification;
 
 mod commands;
 mod error;

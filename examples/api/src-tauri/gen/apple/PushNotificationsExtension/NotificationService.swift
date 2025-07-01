@@ -40,7 +40,7 @@ class NotificationService: UNNotificationServiceExtension {
 
             let slice = RustByteSlice(bytes: makeCString(from: s), len: s.count)
 
-            let n = modify_notification(slice)
+            let n = receive_notification(slice)
 
             // Modify the notification content here...
             bestAttemptContent.title = notification_title(n).asString()!

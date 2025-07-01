@@ -3,7 +3,7 @@ use quote::quote;
 use syn::{parse_macro_input, ItemFn};
 
 #[proc_macro_attribute]
-pub fn modify_push_notification(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemFn);
     let fn_name = input.sig.ident.clone();
 
@@ -113,7 +113,7 @@ pub fn modify_push_notification(_args: TokenStream, input: TokenStream) -> Token
         }
         #[cfg(target_os = "ios")]
         #[no_mangle]
-        pub unsafe extern "C" fn modify_notification(notification_str: RustByteSlice) -> *mut tauri_plugin_notification::NotificationData {
+        pub unsafe extern "C" fn receive_notification(notification_str: RustByteSlice) -> *mut tauri_plugin_notification::NotificationData {
             let notification: tauri_plugin_notification::NotificationData = serde_json::from_str(notification_str.as_str()).unwrap();
 
             let new_notification = #fn_name(notification);

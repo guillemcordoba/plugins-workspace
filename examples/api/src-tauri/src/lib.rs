@@ -217,8 +217,8 @@ use jni::objects::JClass;
 use jni::JNIEnv;
 use tauri_plugin_notification::{NotificationData, NotificationExt};
 
-#[tauri_plugin_notification::modify_push_notification]
-pub fn modify_push_notification(mut notification: NotificationData) -> NotificationData {
+#[tauri_plugin_notification::receive_push_notification]
+pub fn receive_push_notification(mut notification: NotificationData) -> NotificationData {
     //n.title = Some(String::from("AAA"));
     notification.title = Some(String::from("2AAA"));
     // let mut extra: HashMap<String, Value> = HashMap::new();

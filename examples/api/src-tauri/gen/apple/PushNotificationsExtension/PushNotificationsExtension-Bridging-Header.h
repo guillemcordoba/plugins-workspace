@@ -13,7 +13,7 @@ typedef struct {
 
 struct push_notification;
 
-struct push_notification * modify_notification(RustByteSlice notification);
+struct push_notification * receive_notification(RustByteSlice notification);
 
 // Free a `named_data` instance returned by `named_data_new`.
 void notification_destroy(struct push_notification *data);
