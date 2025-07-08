@@ -83,10 +83,19 @@ impl<R: Runtime> Notification<R> {
     }
 
     pub fn request_permission(&self) -> crate::Result<PermissionState> {
-        self.0
+        let permission_state = self
+            .0
             .run_mobile_plugin::<PermissionResponse>("requestPermissions", ())
             .map(|r| r.permission_state)
-            .map_err(Into::into)
+            .map_err(Into::into)?;
+        #[cfg(feature = "push-notifications-fcm")]
+        {
+            if let PermissionState::Granted = permission_state {
+                self.register_for_push_notifications()?;
+            }
+        }
+
+        Ok(permission_state)
     }
 
     pub fn permission_state(&self) -> crate::Result<PermissionState> {
