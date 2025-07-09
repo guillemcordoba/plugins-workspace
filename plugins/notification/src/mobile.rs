@@ -83,7 +83,7 @@ impl<R: Runtime> Notification<R> {
     }
 
     pub fn request_permission(&self) -> crate::Result<PermissionState> {
-        let permission_state = self
+        let permission_state: crate::Result<PermissionState> = self
             .0
             .run_mobile_plugin::<PermissionResponse>("requestPermissions", ())
             .map(|r| r.permission_state)
