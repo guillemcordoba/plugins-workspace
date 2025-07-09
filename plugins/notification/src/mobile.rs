@@ -87,7 +87,7 @@ impl<R: Runtime> Notification<R> {
             .0
             .run_mobile_plugin::<PermissionResponse>("requestPermissions", ())
             .map(|r| r.permission_state)
-            .map_err(|e| e.into())?;
+            .map_err(|e| crate::Error::PluginInvoke(e))?;
         #[cfg(feature = "push-notifications-fcm")]
         {
             if let PermissionState::Granted = permission_state {
