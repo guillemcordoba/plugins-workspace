@@ -59,8 +59,39 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
             }),
         },
     )?;
+    #[cfg(feature = "push-notifications-fcm")]
+    {
+        let app_handle = app.clone();
+        handle.run_mobile_plugin::<()>(
+            "registerListener",
+            RegisterListenerArgs {
+                event: String::from("newFcmToken"),
+                handler: TauriChannel::new(move |event| {
+                    let token = match event {
+                        tauri::ipc::InvokeResponseBody::Json(payload) => {
+                            serde_json::from_str::<serde_json::Value>(payload.as_str())?
+                                .get("token")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_owned())
+                        }
+                        _ => None,
+                    };
+                    if let Some(t) = token {
+                        app_handle.emit("notification://new-fcm-token", t)?;
+                    }
+                    Ok(())
+                }),
+            },
+        )?;
+    }
 
-    Ok(Notification(handle))
+    let notification = Notification(handle);
+
+    if let Ok(PermissionState::Granted) = notification.permission_state() {
+        notification.register_for_push_notifications()?;
+    }
+
+    Ok(notification)
 }
 
 impl<R: Runtime> crate::NotificationBuilder<R> {
@@ -205,29 +236,6 @@ impl<R: Runtime> Notification<R> {
 
     #[cfg(feature = "push-notifications-fcm")]
     pub fn register_for_push_notifications(&self) -> crate::Result<String> {
-        let app_handle = self.0.app().clone();
-        self.0.run_mobile_plugin::<()>(
-            "registerListener",
-            RegisterListenerArgs {
-                event: String::from("newFcmToken"),
-                handler: TauriChannel::new(move |event| {
-                    let token = match event {
-                        tauri::ipc::InvokeResponseBody::Json(payload) => {
-                            serde_json::from_str::<serde_json::Value>(payload.as_str())?
-                                .get("token")
-                                .and_then(|v| v.as_str())
-                                .map(|s| s.to_owned())
-                        }
-                        _ => None,
-                    };
-                    if let Some(t) = token {
-                        app_handle.emit("notification://new-fcm-token", t)?;
-                    }
-                    Ok(())
-                }),
-            },
-        )?;
-
         let token_value = self
             .0
             .run_mobile_plugin::<serde_json::Value>("registerForPushNotifications", ())?;
