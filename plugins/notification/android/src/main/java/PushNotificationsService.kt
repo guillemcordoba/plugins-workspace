@@ -14,6 +14,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         init {
             System.loadLibrary("tauri_app_lib")
         }
+        var contextInitialized: Boolean = false
     }
 
     /**
@@ -63,14 +64,27 @@ class PushNotificationsService(): FirebaseMessagingService()  {
                 manager.schedule(modifiedNotification)
             }
         } ?: run {
-            Log.i("PushNotificationService ", "data:: $d")
-            val notification = initcontextandreceivepushnotification(this, d)
-            Log.i("PushNotificationService ", "Notifications :: $notification")
-            val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
+            if (!contextInitialized) {
+                contextInitialized = true
+                Log.i("PushNotificationService ", "data:: $d")
+                val notification = initcontextandreceivepushnotification(this, d)
+                Log.i("PushNotificationService ", "Notifications :: $notification")
+                val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
 
-            if (!(modifiedNotification.title == null && modifiedNotification.body == null)) {
-                modifiedNotification.sourceJson = notification
-                manager.schedule(modifiedNotification)
+                if (!(modifiedNotification.title == null && modifiedNotification.body == null)) {
+                    modifiedNotification.sourceJson = notification
+                    manager.schedule(modifiedNotification)
+                }
+            } else {
+                Log.i("PushNotificationService ", "data:: $d")
+                val notification = receivepushnotification(d)
+                Log.i("PushNotificationService ", "Notifications :: $notification")
+                val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
+
+                if (!(modifiedNotification.title == null && modifiedNotification.body == null)) {
+                    modifiedNotification.sourceJson = notification
+                    manager.schedule(modifiedNotification)
+                }
             }
         }
     }
