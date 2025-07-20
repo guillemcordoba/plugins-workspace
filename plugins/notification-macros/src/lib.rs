@@ -52,7 +52,6 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             jnotification: jni::objects::JString<'local>,
             main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
-            println!("hayayya {}", init_context);
             let init_context: String = env
                 .get_string(&jinit_context)
                 .expect("Couldn't get java string!")
