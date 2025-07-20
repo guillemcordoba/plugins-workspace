@@ -51,7 +51,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
             // Initialize global context
-            let activity = env.new_global_ref(jnotification).unwrap();
+            let activity = env.new_global_ref(jnotification.clone()).unwrap();
             let vm = env.get_java_vm().unwrap();
             let env = vm.attach_current_thread_as_daemon().unwrap();
             ndk_context::initialize_android_context(
