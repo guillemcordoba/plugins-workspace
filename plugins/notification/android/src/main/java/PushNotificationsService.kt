@@ -56,7 +56,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         NotificationPlugin.instance?.let {
             Log.i("isnuuuul", "tes")
             Log.i("PushNotificationService ", "data:: $d")
-            val notification = receivepushnotification(this, false, d)
+            val notification = receivepushnotification(d)
             Log.i("PushNotificationService ", "Notifications :: $notification")
             val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
 
@@ -66,7 +66,8 @@ class PushNotificationsService(): FirebaseMessagingService()  {
             }
         } ?: run {
             Log.i("PushNotificationService ", "data:: $d")
-            val notification = receivepushnotification(this, true, d)
+            initcontext(this)
+            val notification = receivepushnotification(d)
             Log.i("PushNotificationService ", "Notifications :: $notification")
             val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
 
@@ -77,5 +78,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         }
     }
 
-    private external fun receivepushnotification(context: Context, initContext: Boolean, notification: String): String
+    private external fun initcontext(context: Context)
+
+    private external fun receivepushnotification(notification: String): String
 }

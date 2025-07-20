@@ -13,8 +13,17 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             app_tauri,
             notification,
             PushNotificationsService,
+            initcontext,
+            [jni::objects::JObject<'local>]
+        );
+
+        #[cfg(target_os = "android")]
+        tauri::wry::prelude::android_fn!(
+            app_tauri,
+            notification,
+            PushNotificationsService,
             receivepushnotification,
-            [bool, jni::objects::JObject<'local>, jni::objects::JString<'local>],
+            [jni::objects::JString<'local>],
             jni::objects::JString<'local>,
             [#fn_name]
         );
@@ -44,27 +53,30 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         // }
 
         #[cfg(target_os = "android")]
+        unsafe fn initcontext<'local>(
+            mut env: jni::JNIEnv<'local>,
+            class: jni::objects::JClass<'local>,
+            jobject: jni::objects::JObject<'local>,
+            main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
+        ) {
+            println!("yes");
+            // Initialize global context
+            let context = env.new_global_ref(jobject).unwrap();
+            let vm = env.get_java_vm().unwrap();
+
+            ndk_context::initialize_android_context(
+              vm.get_java_vm_pointer() as *mut _,
+              context.as_obj().as_raw() as *mut _,
+            );
+        }
+
+        #[cfg(target_os = "android")]
         unsafe fn receivepushnotification<'local>(
             mut env: jni::JNIEnv<'local>,
             class: jni::objects::JClass<'local>,
-            init_context: bool,
-            jobject: jni::objects::JObject<'local>,
             jnotification: jni::objects::JString<'local>,
             main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
-            println!("hayayya {}", init_context);
-            if init_context {
-                println!("yes");
-                // Initialize global context
-                let context = env.new_global_ref(jobject).unwrap();
-                let vm = env.get_java_vm().unwrap();
-
-                ndk_context::initialize_android_context(
-                  vm.get_java_vm_pointer() as *mut _,
-                  context.as_obj().as_raw() as *mut _,
-                );
-            }
-             
             let notification: String = env
                 .get_string(&jnotification)
                 .expect("Couldn't get java string!")
