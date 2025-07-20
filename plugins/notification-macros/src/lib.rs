@@ -13,8 +13,10 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             app_tauri,
             notification,
             PushNotificationsService,
-            initcontext,
-            [jni::objects::JObject<'local>]
+            receivepushnotification,
+            [jni::objects::JString<'local>],
+            jni::objects::JString<'local>,
+            [#fn_name]
         );
 
         #[cfg(target_os = "android")]
@@ -22,8 +24,8 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             app_tauri,
             notification,
             PushNotificationsService,
-            receivepushnotification,
-            [jni::objects::JString<'local>],
+            initcontextandreceivepushnotification,
+            [jni::objects::JObject<'local>, jni::objects::JString<'local>],
             jni::objects::JString<'local>,
             [#fn_name]
         );
@@ -53,11 +55,13 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         // }
 
         #[cfg(target_os = "android")]
-        unsafe fn initcontext<'local>(
+        unsafe fn initcontextandreceivepushnotification<'local>(
             mut env: jni::JNIEnv<'local>,
             class: jni::objects::JClass<'local>,
             jobject: jni::objects::JObject<'local>,
-        ) {
+            jnotification: jni::objects::JString<'local>,
+            main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
+        ) -> jni::objects::JString<'local> {
             println!("yes");
             // Initialize global context
             let context = env.new_global_ref(jobject).unwrap();
@@ -67,6 +71,22 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
               vm.get_java_vm_pointer() as *mut _,
               context.as_obj().as_raw() as *mut _,
             );
+             
+            let notification: String = env
+                .get_string(&jnotification)
+                .expect("Couldn't get java string!")
+                .into();
+
+            let notification_data: tauri_plugin_notification::NotificationData = serde_json::from_str(notification.as_str()).expect("Can't convert notification");
+
+            let received_notification = match main(notification_data) {
+                Some(n) => n,
+                None => tauri_plugin_notification::NotificationData::default() 
+            };
+
+            let jstring: jni::objects::JString = env.new_string(serde_json::to_string(&received_notification).expect("Can't serialize NotificationData").clone()).expect("Coulnd't reserve new string");
+
+            jstring
         }
 
         #[cfg(target_os = "android")]
@@ -76,6 +96,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             jnotification: jni::objects::JString<'local>,
             main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
+            
             let notification: String = env
                 .get_string(&jnotification)
                 .expect("Couldn't get java string!")

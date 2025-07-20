@@ -66,8 +66,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
             }
         } ?: run {
             Log.i("PushNotificationService ", "data:: $d")
-            initcontext(this)
-            val notification = receivepushnotification(d)
+            val notification = initcontextandreceivepushnotification(this, d)
             Log.i("PushNotificationService ", "Notifications :: $notification")
             val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
 
@@ -78,7 +77,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         }
     }
 
-    private external fun initcontext(context: Context)
+    private external fun initcontextandreceivepushnotification(context: Context, notification: String): String
 
     private external fun receivepushnotification(notification: String): String
 }
