@@ -54,9 +54,9 @@ class PushNotificationsService(): FirebaseMessagingService()  {
 
         var initContext = false
 
-        Log.i("yo")
+        Log.i("yo", "tes")
         NotificationPlugin.instance?.let {
-            Log.i("isnuuuul")
+            Log.i("isnuuuul", "tes")
             initContext = true
         }
 
