@@ -52,12 +52,12 @@ class PushNotificationsService(): FirebaseMessagingService()  {
 
         val d = data.toString()
 
-        var initContext = true
+        var initContext = "true"
 
         Log.i("yo", "tes")
         NotificationPlugin.instance?.let {
             Log.i("isnuuuul", "tes")
-            initContext = false
+            initContext = "false"
         }
 
         Log.i("PushNotificationService ", "data:: $d")
@@ -71,5 +71,5 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         }
     }
 
-    private external fun receivepushnotification(context: Context, initContext: Boolean, notification: String): String
+    private external fun receivepushnotification(context: Context, initContext: String, notification: String): String
 }
