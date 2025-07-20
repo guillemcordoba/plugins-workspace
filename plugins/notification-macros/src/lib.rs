@@ -12,8 +12,8 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
     let expanded = quote! {
         #[cfg(target_os = "android")]
         tauri::wry::prelude::android_fn!(
-            studio_darksoil,
-            dashchat,
+            app_tauri,
+            notification,
             PushNotificationsService,
             receivepushnotification,
             [jni::objects::JString<'local>],
