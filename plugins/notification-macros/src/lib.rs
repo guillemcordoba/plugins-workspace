@@ -51,16 +51,6 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
             // Initialize global context
-            let window_manager = env
-              .call_method(
-                &jobject,
-                "getWindowManager",
-                "()Landroid/view/WindowManager;",
-                &[],
-              )
-              .unwrap()
-              .l()
-              .unwrap();
             let activity = env.new_global_ref(jnotification).unwrap();
             let vm = env.get_java_vm().unwrap();
             let env = vm.attach_current_thread_as_daemon().unwrap();
