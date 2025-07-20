@@ -73,7 +73,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
 
             let jstring: jni::objects::JString = env.new_string(serde_json::to_string(&received_notification).expect("Can't serialize NotificationData").clone()).expect("Coulnd't reserve new string");
 
-            jstring.clone()
+            jstring
         }
 
         #[cfg(target_os = "ios")]
