@@ -52,7 +52,9 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             jnotification: jni::objects::JString<'local>,
             main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
+            println!("hayayya {}", init_context);
             if init_context {
+                println!("yes");
                 // Initialize global context
                 let context = env.new_global_ref(jobject).unwrap();
                 let vm = env.get_java_vm().unwrap();
