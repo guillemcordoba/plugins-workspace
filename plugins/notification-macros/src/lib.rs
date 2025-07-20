@@ -7,11 +7,13 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
     let input = parse_macro_input!(input as ItemFn);
     let fn_name = input.sig.ident.clone();
 
+            // app_tauri,
+            // notification,
     let expanded = quote! {
         #[cfg(target_os = "android")]
         tauri::wry::prelude::android_fn!(
-            app_tauri,
-            notification,
+            studio_darksoil,
+            dashchat,
             PushNotificationsService,
             receivepushnotification,
             [jni::objects::JString<'local>],
