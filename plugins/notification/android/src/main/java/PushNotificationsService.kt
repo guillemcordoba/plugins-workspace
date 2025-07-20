@@ -1,6 +1,7 @@
 package app.tauri.notification
 
 import android.util.Log
+import android.content.Context
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import app.tauri.plugin.JSObject
