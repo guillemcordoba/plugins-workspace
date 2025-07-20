@@ -14,7 +14,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             notification,
             PushNotificationsService,
             receivepushnotification,
-            [Option<jni::objects::JObject<'local>>, jni::objects::JString<'local>],
+            [bool, jni::objects::JObject<'local>, jni::objects::JString<'local>],
             jni::objects::JString<'local>,
             [#fn_name]
         );
@@ -47,14 +47,16 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         unsafe fn receivepushnotification<'local>(
             mut env: jni::JNIEnv<'local>,
             class: jni::objects::JClass<'local>,
-            jobject: Option<jni::objects::JObject<'local>>,
+            init_context: bool,
+            jobject: jni::objects::JObject<'local>,
             jnotification: jni::objects::JString<'local>,
             main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
-            if let Some(object) = jobject {
+            println!("hayayya {}", init_context);
+            if init_context {
                 println!("yes");
                 // Initialize global context
-                let context = env.new_global_ref(object).unwrap();
+                let context = env.new_global_ref(jobject).unwrap();
                 let vm = env.get_java_vm().unwrap();
 
                 ndk_context::initialize_android_context(
