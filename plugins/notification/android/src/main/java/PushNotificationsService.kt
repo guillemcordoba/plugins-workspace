@@ -63,5 +63,5 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         }
     }
 
-    private external fun receivepushnotification(notification: String): String
+    private external fun receivepushnotification(context: Context, notification: String): String
 }
