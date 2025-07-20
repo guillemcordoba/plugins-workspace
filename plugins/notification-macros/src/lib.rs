@@ -57,7 +57,6 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             mut env: jni::JNIEnv<'local>,
             class: jni::objects::JClass<'local>,
             jobject: jni::objects::JObject<'local>,
-            main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) {
             println!("yes");
             // Initialize global context
