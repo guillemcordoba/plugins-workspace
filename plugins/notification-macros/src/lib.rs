@@ -54,7 +54,6 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             // Initialize global context
             let context = env.new_global_ref(jobject).unwrap();
             let vm = env.get_java_vm().unwrap();
-            let mut env = vm.attach_current_thread_as_daemon().unwrap();
             ndk_context::initialize_android_context(
               vm.get_java_vm_pointer() as *mut _,
               context.as_obj().as_raw() as *mut _,
