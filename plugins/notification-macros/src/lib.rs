@@ -50,6 +50,25 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             jnotification: jni::objects::JString<'local>,
             main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
+            // Initialize global context
+            let window_manager = env
+              .call_method(
+                &jobject,
+                "getWindowManager",
+                "()Landroid/view/WindowManager;",
+                &[],
+              )
+              .unwrap()
+              .l()
+              .unwrap();
+            let activity = env.new_global_ref(jnotification).unwrap();
+            let vm = env.get_java_vm().unwrap();
+            let env = vm.attach_current_thread_as_daemon().unwrap();
+            ndk_context::initialize_android_context(
+              vm.get_java_vm_pointer() as *mut _,
+              activity.as_obj().as_raw() as *mut _,
+            );
+             
             let notification: String = env
                 .get_string(&jnotification)
                 .expect("Couldn't get java string!")
