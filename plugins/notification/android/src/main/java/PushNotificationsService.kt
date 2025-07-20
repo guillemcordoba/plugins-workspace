@@ -52,10 +52,10 @@ class PushNotificationsService(): FirebaseMessagingService()  {
 
         val d = data.toString()
 
-        val initContext = false
+        var initContext = false
 
         Log.i("yo")
-        if (NotificationPlugin.instance == null) {
+        NotificationPlugin.instance?.let {
             Log.i("isnuuuul")
             initContext = true
         }
