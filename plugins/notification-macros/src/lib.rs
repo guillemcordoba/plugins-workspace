@@ -53,6 +53,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
             if init_context {
+                println!("Initializing context");
                 // Initialize global context
                 let context = env.new_global_ref(jobject).unwrap();
                 let vm = env.get_java_vm().unwrap();
@@ -61,6 +62,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
                   vm.get_java_vm_pointer() as *mut _,
                   context.as_obj().as_raw() as *mut _,
                 );
+                println!("initialized context");
             }
              
             let notification: String = env
