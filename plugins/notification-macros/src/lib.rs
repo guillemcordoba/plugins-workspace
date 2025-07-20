@@ -54,7 +54,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             if let Some(object) = jobject {
                 println!("yes");
                 // Initialize global context
-                let context = env.new_global_ref(jobject).unwrap();
+                let context = env.new_global_ref(object).unwrap();
                 let vm = env.get_java_vm().unwrap();
 
                 ndk_context::initialize_android_context(
