@@ -52,22 +52,28 @@ class PushNotificationsService(): FirebaseMessagingService()  {
 
         val d = data.toString()
 
-        var initContext = true
-
         Log.i("yo", "tes")
         NotificationPlugin.instance?.let {
             Log.i("isnuuuul", "tes")
-            initContext = false
-        }
+            Log.i("PushNotificationService ", "data:: $d")
+            val notification = receivepushnotification(this, false, d)
+            Log.i("PushNotificationService ", "Notifications :: $notification")
+            val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
 
-        Log.i("PushNotificationService ", "data:: $d")
-        val notification = receivepushnotification(this, initContext, d)
-        Log.i("PushNotificationService ", "Notifications :: $notification")
-        val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
+            if (!(modifiedNotification.title == null && modifiedNotification.body == null)) {
+                modifiedNotification.sourceJson = notification
+                manager.schedule(modifiedNotification)
+            }
+        } ?: run {
+            Log.i("PushNotificationService ", "data:: $d")
+            val notification = receivepushnotification(this, true, d)
+            Log.i("PushNotificationService ", "Notifications :: $notification")
+            val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
 
-        if (!(modifiedNotification.title == null && modifiedNotification.body == null)) {
-            modifiedNotification.sourceJson = notification
-            manager.schedule(modifiedNotification)
+            if (!(modifiedNotification.title == null && modifiedNotification.body == null)) {
+                modifiedNotification.sourceJson = notification
+                manager.schedule(modifiedNotification)
+            }
         }
     }
 
