@@ -14,7 +14,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             notification,
             PushNotificationsService,
             receivepushnotification,
-            [jni::objects::JObject<'local>, jni::objects::JString<'local>],
+            [bool, jni::objects::JObject<'local>, jni::objects::JString<'local>],
             jni::objects::JString<'local>,
             [#fn_name]
         );
@@ -47,18 +47,21 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         unsafe fn receivepushnotification<'local>(
             mut env: jni::JNIEnv<'local>,
             class: jni::objects::JClass<'local>,
+            init_context: bool,
             jobject: jni::objects::JObject<'local>,
             jnotification: jni::objects::JString<'local>,
             main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
-            // Initialize global context
-            let context = env.new_global_ref(jobject).unwrap();
-            let vm = env.get_java_vm().unwrap();
-            ndk_context::release_android_context();
-            ndk_context::initialize_android_context(
-              vm.get_java_vm_pointer() as *mut _,
-              context.as_obj().as_raw() as *mut _,
-            );
+            if init_context {
+                // Initialize global context
+                let context = env.new_global_ref(jobject).unwrap();
+                let vm = env.get_java_vm().unwrap();
+
+                ndk_context::initialize_android_context(
+                  vm.get_java_vm_pointer() as *mut _,
+                  context.as_obj().as_raw() as *mut _,
+                );
+            }
              
             let notification: String = env
                 .get_string(&jnotification)
