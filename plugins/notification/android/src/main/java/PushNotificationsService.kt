@@ -53,7 +53,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         val d = data.toString()
 
         Log.i("PushNotificationService ", "data:: $d")
-        val notification = receivepushnotification(d)
+        val notification = receivepushnotification(this, d)
         Log.i("PushNotificationService ", "Notifications :: $notification")
         val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
 
