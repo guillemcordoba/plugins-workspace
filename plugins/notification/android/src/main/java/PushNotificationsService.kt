@@ -52,9 +52,7 @@ class PushNotificationsService(): FirebaseMessagingService()  {
 
         val d = data.toString()
 
-        Log.i("yo", "tes")
         NotificationPlugin.instance?.let {
-            Log.i("isnuuuul", "tes")
             Log.i("PushNotificationService ", "data:: $d")
             val notification = receivepushnotification(d)
             Log.i("PushNotificationService ", "Notifications :: $notification")
