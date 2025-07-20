@@ -14,7 +14,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             notification,
             PushNotificationsService,
             receivepushnotification,
-            [jni::objects::JString<'local>, jni::objects::JObject<'local>, jni::objects::JString<'local>],
+            [Option<jni::objects::JObject<'local>>, jni::objects::JString<'local>],
             jni::objects::JString<'local>,
             [#fn_name]
         );
@@ -47,16 +47,11 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         unsafe fn receivepushnotification<'local>(
             mut env: jni::JNIEnv<'local>,
             class: jni::objects::JClass<'local>,
-            jinit_context: jni::objects::JString<'local>,
-            jobject: jni::objects::JObject<'local>,
+            jobject: Option<jni::objects::JObject<'local>>,
             jnotification: jni::objects::JString<'local>,
             main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
-            let init_context: String = env
-                .get_string(&jinit_context)
-                .expect("Couldn't get java string!")
-                .into();
-            if init_context.as_str() == "true" {
+            if let Some(object) = jobject {
                 println!("yes");
                 // Initialize global context
                 let context = env.new_global_ref(jobject).unwrap();

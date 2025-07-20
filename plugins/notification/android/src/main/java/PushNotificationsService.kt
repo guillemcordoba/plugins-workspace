@@ -52,16 +52,16 @@ class PushNotificationsService(): FirebaseMessagingService()  {
 
         val d = data.toString()
 
-        var initContext = "true"
+        var context = this
 
         Log.i("yo", "tes")
         NotificationPlugin.instance?.let {
-            Log.i("isnuuuul", "tes")
-            initContext = "false"
+            Log.i("yo", "null")
+            context = null
         }
 
         Log.i("PushNotificationService ", "data:: $d")
-        val notification = receivepushnotification(this, initContext, d)
+        val notification = receivepushnotification(context, d)
         Log.i("PushNotificationService ", "Notifications :: $notification")
         val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
 
@@ -71,5 +71,5 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         }
     }
 
-    private external fun receivepushnotification(context: Context, initContext: String, notification: String): String
+    private external fun receivepushnotification(context: Context?, notification: String): String
 }
