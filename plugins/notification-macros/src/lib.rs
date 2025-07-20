@@ -14,7 +14,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             notification,
             PushNotificationsService,
             receivepushnotification,
-            [bool, jni::objects::JObject<'local>, jni::objects::JString<'local>],
+            [jni::objects::JString<'local>, jni::objects::JObject<'local>, jni::objects::JString<'local>],
             jni::objects::JString<'local>,
             [#fn_name]
         );
