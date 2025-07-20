@@ -7,8 +7,6 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
     let input = parse_macro_input!(input as ItemFn);
     let fn_name = input.sig.ident.clone();
 
-            // app_tauri,
-            // notification,
     let expanded = quote! {
         #[cfg(target_os = "android")]
         tauri::wry::prelude::android_fn!(
@@ -52,19 +50,24 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             jnotification: jni::objects::JString<'local>,
             main: fn(tauri_plugin_notification::NotificationData) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
+            println!("hello");
             let notification: String = env
                 .get_string(&jnotification)
                 .expect("Couldn't get java string!")
                 .into();
+            println!("hello2");
 
             let notification_data: tauri_plugin_notification::NotificationData = serde_json::from_str(notification.as_str()).expect("Can't convert notification");
+            println!("hello3");
 
             let received_notification = match main(notification_data) {
                 Some(n) => n,
                 None => tauri_plugin_notification::NotificationData::default() 
             };
+            println!("hello4");
 
             let jstring: jni::objects::JString = env.new_string(serde_json::to_string(&received_notification).expect("Can't serialize NotificationData").clone()).expect("Coulnd't reserve new string");
+            println!("hello5");
 
             jstring
         }
