@@ -52,44 +52,18 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         )
 
         val d = data.toString()
+        val dataDir = this.getApplicationInfo().dataDir 
 
-        NotificationPlugin.instance?.let {
-            Log.i("PushNotificationService ", "data:: $d")
-            val notification = receivepushnotification(d)
-            Log.i("PushNotificationService ", "Notifications :: $notification")
-            val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
+        val notification = receivepushnotification(d, dataDir)
+        Log.i("PushNotificationService ", "data:: $d")
+        Log.i("PushNotificationService ", "Notifications :: $notification")
+        val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
 
-            if (!(modifiedNotification.title == null && modifiedNotification.body == null)) {
-                modifiedNotification.sourceJson = notification
-                manager.schedule(modifiedNotification)
-            }
-        } ?: run {
-            if (!contextInitialized) {
-                contextInitialized = true
-                Log.i("PushNotificationService ", "data:: $d")
-                val notification = initcontextandreceivepushnotification(this, d)
-                Log.i("PushNotificationService ", "Notifications :: $notification")
-                val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
-
-                if (!(modifiedNotification.title == null && modifiedNotification.body == null)) {
-                    modifiedNotification.sourceJson = notification
-                    manager.schedule(modifiedNotification)
-                }
-            } else {
-                Log.i("PushNotificationService ", "data:: $d")
-                val notification = receivepushnotification(d)
-                Log.i("PushNotificationService ", "Notifications :: $notification")
-                val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
-
-                if (!(modifiedNotification.title == null && modifiedNotification.body == null)) {
-                    modifiedNotification.sourceJson = notification
-                    manager.schedule(modifiedNotification)
-                }
-            }
+        if (!(modifiedNotification.title == null && modifiedNotification.body == null)) {
+            modifiedNotification.sourceJson = notification
+            manager.schedule(modifiedNotification)
         }
     }
 
-    private external fun initcontextandreceivepushnotification(context: Context, notification: String): String
-
-    private external fun receivepushnotification(notification: String): String
+    private external fun receivepushnotification(notification: String, dataDir: String): String
 }

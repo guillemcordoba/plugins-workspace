@@ -40,6 +40,11 @@ pub use desktop::Notification;
 #[cfg(mobile)]
 pub use mobile::Notification;
 
+#[derive(Debug)]
+pub struct ReceivePushNotificationContext {
+    pub data_dir: std::path::PathBuf
+}
+
 /// The notification builder.
 #[derive(Debug)]
 pub struct NotificationBuilder<R: Runtime> {
