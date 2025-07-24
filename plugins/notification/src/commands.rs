@@ -40,7 +40,7 @@ pub(crate) async fn notify<R: Runtime>(
 
 #[cfg(all(mobile, feature = "push-notifications-fcm"))]
 #[command]
-pub(crate) async fn get_launching_notification_action<R: Runtime>(
+pub(crate) fn get_launching_notification_action<R: Runtime>(
     _app: AppHandle<R>,
     notification: State<'_, Notification<R>>,
 ) -> Option<crate::NotificationActionPerformedPayload> {
