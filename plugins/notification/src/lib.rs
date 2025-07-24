@@ -227,23 +227,38 @@ impl<R: Runtime, T: Manager<R>> crate::NotificationExt<R> for T {
 
 /// Initializes the plugin.
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
-    Builder::new("notification")
-        .invoke_handler(tauri::generate_handler![
+    let mut builder = Builder::new("notification");
+
+    #[cfg(all(mobile, feature = "push-notifications-fcm"))]
+    {
+        builder = builder.invoke_handler(tauri::generate_handler![
             commands::notify,
             commands::request_permission,
-            commands::is_permission_granted
-        ])
-        .js_init_script(include_str!("init-iife.js").replace(
-            "__TEMPLATE_windows__",
-            if cfg!(windows) { "true" } else { "false" },
-        ))
-        .setup(|app, api| {
-            #[cfg(mobile)]
-            let notification = mobile::init(app, api)?;
-            #[cfg(desktop)]
-            let notification = desktop::init(app, api)?;
-            app.manage(notification);
-            Ok(())
-        })
-        .build()
+            commands::is_permission_granted,
+            commands::get_launching_notification_action
+        ]);
+    }
+
+    #[cfg(not(all(mobile, feature = "push-notifications-fcm")))]
+    {
+        builder = builder.invoke_handler(tauri::generate_handler![
+            commands::notify,
+            commands::request_permission,
+            commands::is_permission_granted,
+        ]);
+    }
+
+    builder.js_init_script(include_str!("init-iife.js").replace(
+        "__TEMPLATE_windows__",
+        if cfg!(windows) { "true" } else { "false" },
+    ))
+    .setup(|app, api| {
+        #[cfg(mobile)]
+        let notification = mobile::init(app, api)?;
+        #[cfg(desktop)]
+        let notification = desktop::init(app, api)?;
+        app.manage(notification);
+        Ok(())
+    })
+    .build()
 }

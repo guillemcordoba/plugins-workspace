@@ -26,6 +26,7 @@ const COMMANDS: &[&str] = &[
     "delete_channel",
     "create_channel",
     "permission_state",
+    "get_launching_notification_action",
 ];
 
 fn google_services_path() -> Result<Option<PathBuf>, String> {

@@ -25,6 +25,7 @@ It allows all notification related features.
 - `allow-delete-channel`
 - `allow-create-channel`
 - `allow-permission-state`
+- `allow-get-launching-notification-action`
 
 ## Permission Table
 
@@ -187,6 +188,32 @@ Enables the get_active command without any pre-configured scope.
 <td>
 
 Denies the get_active command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`notification:allow-get-launching-notification-action`
+
+</td>
+<td>
+
+Enables the get_launching_notification_action command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`notification:deny-get-launching-notification-action`
+
+</td>
+<td>
+
+Denies the get_launching_notification_action command without any pre-configured scope.
 
 </td>
 </tr>

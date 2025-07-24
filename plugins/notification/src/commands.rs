@@ -37,3 +37,13 @@ pub(crate) async fn notify<R: Runtime>(
     builder.data = options;
     builder.show()
 }
+
+#[cfg(all(mobile, feature = "push-notifications-fcm"))]
+#[command]
+pub(crate) async fn get_launching_notification_action<R: Runtime>(
+    _app: AppHandle<R>,
+    notification: State<'_, Notification<R>>,
+) -> Option<tauri_plugin_notification_models::NotificationActionPerformedPayload> {
+    notification.get_launching_notification_action()
+}
+
