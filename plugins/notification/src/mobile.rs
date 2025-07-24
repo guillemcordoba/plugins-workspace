@@ -52,7 +52,11 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
                 if let InvokeResponseBody::Json(payload) = event {
                     let n: NotificationActionPerformedPayload =
                         serde_json::from_str(payload.as_str())?;
-                    app_handle.manage(n.clone());
+
+                    if let None = app_handle.try_state::<NotificationActionPerformedPayload>() {
+                        app_handle.manage(n.clone());
+                    }
+
                     app_handle.emit("notification://action-performed", n)?;
                 };
                 Ok(())
@@ -253,6 +257,12 @@ impl<R: Runtime> Notification<R> {
                 ))),
             },
         }
+    }
+
+    #[cfg(feature = "push-notifications-fcm")]
+    pub fn get_launching_notification_action(&self) -> Option<NotificationActionPerformedPayload> {
+        let payload = self.0.app().try_state::<NotificationActionPerformedPayload>()?;
+        Some(payload.inner().to_owned())
     }
 }
 

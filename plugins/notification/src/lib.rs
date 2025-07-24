@@ -245,20 +245,5 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             app.manage(notification);
             Ok(())
         })
-        .on_event(|app_handle, event| {
-            #[cfg(mobile)]
-            if let RunEvent::Ready = event {
-                // There is a race condition when opening a notification while the app is not active
-                // The event "notification-action-performed" from the android plugin fires before the app has finished setting up
-                // So we store it ourselves and emit it when the app is ready, after setup
-                if let Some(n) =
-                    app_handle.try_state::<mobile::NotificationActionPerformedPayload>()
-                {
-                    app_handle
-                        .emit("notification://action-performed", n.inner().clone())
-                        .unwrap();
-                }
-            }
-        })
         .build()
 }
