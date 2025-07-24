@@ -43,7 +43,7 @@ pub(crate) async fn notify<R: Runtime>(
 pub(crate) async fn get_launching_notification_action<R: Runtime>(
     _app: AppHandle<R>,
     notification: State<'_, Notification<R>>,
-) -> Option<tauri_plugin_notification_models::NotificationActionPerformedPayload> {
+) -> Option<crate::NotificationActionPerformedPayload> {
     notification.get_launching_notification_action()
 }
 
