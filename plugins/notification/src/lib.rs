@@ -233,6 +233,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::notify,
             commands::request_permission,
             commands::is_permission_granted,
+            commands::get_launching_notification_action
         ])
         .js_init_script(include_str!("init-iife.js").replace(
             "__TEMPLATE_windows__",
@@ -256,7 +257,6 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::notify,
             commands::request_permission,
             commands::is_permission_granted,
-            commands::get_launching_notification_action
         ])
         .js_init_script(include_str!("init-iife.js").replace(
             "__TEMPLATE_windows__",
