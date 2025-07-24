@@ -228,7 +228,7 @@ impl<R: Runtime, T: Manager<R>> crate::NotificationExt<R> for T {
 /// Initializes the plugin.
 #[cfg(all(mobile, feature = "push-notifications-fcm"))]
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
-    let mut builder = Builder::new("notification")
+    Builder::new("notification")
         .invoke_handler(tauri::generate_handler![
             commands::notify,
             commands::request_permission,
@@ -251,7 +251,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
 
 #[cfg(not(all(mobile, feature = "push-notifications-fcm")))]
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
-    let mut builder = Builder::new("notification")
+    Builder::new("notification")
         .invoke_handler(tauri::generate_handler![
             commands::notify,
             commands::request_permission,
