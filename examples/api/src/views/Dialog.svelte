@@ -8,6 +8,8 @@
   let filter = null;
   let multiple = false;
   let directory = false;
+  let pickerMode = "document";
+  let fileAccessMode = "scoped";
 
   function arrayBufferToBase64(buffer, callback) {
     var blob = new Blob([buffer], {
@@ -41,56 +43,70 @@
   }
 
   async function msg() {
-    await message("Tauri is awesome!");
+    await message("Tauri is awesome!").then((res) => onMessage(res));
   }
 
-  function openDialog() {
-    open({
-      title: "My wonderful open dialog",
-      defaultPath,
-      filters: filter
-        ? [
-            {
-              name: "Tauri Example",
-              extensions: filter.split(",").map((f) => f.trim()),
-            },
-          ]
-        : [],
-      multiple,
-      directory,
-    })
-      .then(function (res) {
-        if (Array.isArray(res)) {
-          onMessage(res);
-        } else {
-          var pathToRead = res;
-          var isFile = pathToRead.match(/\S+\.\S+$/g);
-          readFile(pathToRead)
-            .then(function (response) {
-              if (isFile) {
-                if (
-                  pathToRead.includes(".png") ||
-                  pathToRead.includes(".jpg") ||
-                  pathToRead.includes(".jpeg")
-                ) {
-                  arrayBufferToBase64(
-                    new Uint8Array(response),
-                    function (base64) {
-                      var src = "data:image/png;base64," + base64;
-                      insecureRenderHtml('<img src="' + src + '"></img>');
-                    }
-                  );
-                } else {
-                  onMessage(res);
-                }
-              } else {
-                onMessage(res);
-              }
-            })
-            .catch(onMessage(res));
-        }
-      })
+  async function msgCustom(result) {
+    const buttons = { yes: "awesome", no: "amazing", cancel: "stunning" };
+    await message(`Tauri is: `, { buttons })
+      .then((res) => onMessage(`Tauri is ${res}`))
       .catch(onMessage);
+  }
+
+  async function openDialog() {
+    try {
+      var result = await open({
+        title: "My wonderful open dialog",
+        defaultPath,
+        filters: filter
+          ? [
+              {
+                name: "Tauri Example",
+                extensions: filter.split(",").map((f) => f.trim()),
+              },
+            ]
+          : [],
+        multiple,
+        directory,
+        pickerMode,
+        fileAccessMode,
+      })
+
+      if (Array.isArray(result)) {
+        onMessage(result);
+      } else {
+        var pathToRead = result;
+        var isFile = pathToRead.match(/\S+\.\S+$/g);
+
+        await readFile(pathToRead)
+          .then(function (res) {
+            if (isFile) {
+              if (
+                pathToRead.includes(".png") ||
+                pathToRead.includes(".jpg") ||
+                pathToRead.includes(".jpeg")
+              ) {
+                arrayBufferToBase64(
+                  new Uint8Array(res),
+                  function (base64) {
+                    var src = "data:image/png;base64," + base64;
+                    insecureRenderHtml('<img src="' + src + '"></img>');
+                  }
+                );
+              } else {
+                // Convert byte array to UTF-8 string
+                const decoder = new TextDecoder('utf-8');
+                const text = decoder.decode(new Uint8Array(res));
+                onMessage(text);
+              }
+            } else {
+              onMessage(res);
+          }
+        })
+      }
+    } catch(exception) {
+      onMessage(exception)
+    }
   }
 
   function saveDialog() {
@@ -105,7 +121,7 @@
             },
           ]
         : [],
-    })
+      })
       .then(onMessage)
       .catch(onMessage);
   }
@@ -135,13 +151,35 @@
   <input type="checkbox" id="dialog-directory" bind:checked={directory} />
   <label for="dialog-directory">Directory</label>
 </div>
+<div>
+  <label for="dialog-picker-mode">Picker Mode:</label>
+  <select id="dialog-picker-mode" bind:value={pickerMode}>
+    <option value="">None</option>
+    <option value="media">Media</option>
+    <option value="image">Image</option>
+    <option value="video">Video</option>
+    <option value="document">Document</option>
+  </select>
+</div>
+<div>
+  <label for="dialog-file-access-mode">File Access Mode:</label>
+  <select id="dialog-file-access-mode" bind:value={fileAccessMode}>
+    <option value="copy">Copy</option>
+    <option value="scoped">Scoped</option>
+  </select>
+</div>
 <br />
-<button class="btn" id="open-dialog" on:click={openDialog}>Open dialog</button>
-<button class="btn" id="save-dialog" on:click={saveDialog}
-  >Open save dialog</button
->
-<button class="btn" id="prompt-dialog" on:click={prompt}>Prompt</button>
-<button class="btn" id="custom-prompt-dialog" on:click={promptCustom}
-  >Prompt (custom)</button
->
-<button class="btn" id="message-dialog" on:click={msg}>Message</button>
+
+<div class="flex flex-wrap flex-col md:flex-row gap-2 children:flex-shrink-0">
+  <button class="btn" id="open-dialog" on:click={openDialog}>Open dialog</button>
+  <button class="btn" id="save-dialog" on:click={saveDialog}
+    >Open save dialog</button
+  >
+  <button class="btn" id="prompt-dialog" on:click={prompt}>Prompt</button>
+  <button class="btn" id="custom-prompt-dialog" on:click={promptCustom}
+    >Prompt (custom)</button
+  >
+  <button class="btn" id="message-dialog" on:click={msg}>Message</button>
+  <button class="btn" id="message-dialog" on:click={msgCustom}>Message (custom)</button>
+
+</div>

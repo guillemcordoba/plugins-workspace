@@ -1,5 +1,29 @@
 # Changelog
 
+## \[2.4.5]
+
+- [`521cd8b3`](https://github.com/tauri-apps/plugins-workspace/commit/521cd8b372c862d96b1637775710e4d7cf2443e2) ([#3155](https://github.com/tauri-apps/plugins-workspace/pull/3155) by [@EliasStar](https://github.com/tauri-apps/plugins-workspace/../../EliasStar)) Fix off by one error in the implementation of readTextFileLines causing all lines to end with an (additional) null byte.
+  Issue: [#3154](https://github.com/tauri-apps/plugins-workspace/issues/3154)
+  PR: [#3155](https://github.com/tauri-apps/plugins-workspace/pull/3155)
+
+## \[2.4.4]
+
+- [`93426f85`](https://github.com/tauri-apps/plugins-workspace/commit/93426f85120f49beb9f40222bff45185a32d54a9) Fixed an issue that caused docs.rs builds to fail. No user facing changes.
+
+## \[2.4.3]
+
+- [`6c9b61fb`](https://github.com/tauri-apps/plugins-workspace/commit/6c9b61fb658145d13893626112fc489f7458aa17) ([#3039](https://github.com/tauri-apps/plugins-workspace/pull/3039) by [@FabianLars](https://github.com/tauri-apps/plugins-workspace/../../FabianLars)) On Android, updated compileSdk to 36.
+- [`6b5b1053`](https://github.com/tauri-apps/plugins-workspace/commit/6b5b1053ba8aeb789dd5cb5fb05b7e98f3b8de0b) ([#1939](https://github.com/tauri-apps/plugins-workspace/pull/1939) by [@amrbashir](https://github.com/tauri-apps/plugins-workspace/../../amrbashir)) Enhance error messages.
+
+## \[2.4.2]
+
+- [`4eb36b0f`](https://github.com/tauri-apps/plugins-workspace/commit/4eb36b0ff57acb0bb1b911c583efa3bf2f56aa32) ([#2907](https://github.com/tauri-apps/plugins-workspace/pull/2907) by [@Legend-Master](https://github.com/tauri-apps/plugins-workspace/../../Legend-Master)) Fixed calling `writeFile` with `data: ReadableStream` throws `Invalid argument`
+- [`515182a1`](https://github.com/tauri-apps/plugins-workspace/commit/515182a179d4439079b2b7f6927555ba5ab0b035) ([#2915](https://github.com/tauri-apps/plugins-workspace/pull/2915) by [@samhinshaw](https://github.com/tauri-apps/plugins-workspace/../../samhinshaw)) `readFile` now returns a more specific type `Promise<Uint8Array<ArrayBuffer>>` instead of the default `Promise<Uint8Array<ArrayBufferLike>`
+
+## \[2.4.1]
+
+- [`44a1f659`](https://github.com/tauri-apps/plugins-workspace/commit/44a1f659125a341191420e650608b0b6ff316a0e) ([#2846](https://github.com/tauri-apps/plugins-workspace/pull/2846) by [@Legend-Master](https://github.com/tauri-apps/plugins-workspace/../../Legend-Master)) Fix `writeFile` doesn't create a new file by default when the data is a `ReadableStream`
+
 ## \[2.4.0]
 
 - [`f209b2f2`](https://github.com/tauri-apps/plugins-workspace/commit/f209b2f23cb29133c97ad5961fb46ef794dbe063) ([#2804](https://github.com/tauri-apps/plugins-workspace/pull/2804) by [@renovate](https://github.com/tauri-apps/plugins-workspace/../../renovate)) Updated tauri to 2.6

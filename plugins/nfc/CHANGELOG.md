@@ -1,5 +1,21 @@
 # Changelog
 
+## \[2.3.4]
+
+- [`b4348cee`](https://github.com/tauri-apps/plugins-workspace/commit/b4348cee926ee3d1db151bc831cdb9049bee717f) ([#3101](https://github.com/tauri-apps/plugins-workspace/pull/3101) by [@bclarke123](https://github.com/tauri-apps/plugins-workspace/../../bclarke123)) Update return value of `isAvailable` to match TypeScript function signature
+
+## \[2.3.3]
+
+- [`93426f85`](https://github.com/tauri-apps/plugins-workspace/commit/93426f85120f49beb9f40222bff45185a32d54a9) Fixed an issue that caused docs.rs builds to fail. No user facing changes.
+
+## \[2.3.2]
+
+- [`6c9b61fb`](https://github.com/tauri-apps/plugins-workspace/commit/6c9b61fb658145d13893626112fc489f7458aa17) ([#3039](https://github.com/tauri-apps/plugins-workspace/pull/3039) by [@FabianLars](https://github.com/tauri-apps/plugins-workspace/../../FabianLars)) On Android, updated compileSdk to 36.
+
+## \[2.3.1]
+
+- [`fe23a5e0`](https://github.com/tauri-apps/plugins-workspace/commit/fe23a5e01399a6ad61426bf8a94a6bb97227cf88) ([#2885](https://github.com/tauri-apps/plugins-workspace/pull/2885) by [@zaphim12](https://github.com/tauri-apps/plugins-workspace/../../zaphim12)) On iOS, the reader session will now get closed properly on errors, preventing dangling invalid sessions that could prevent subsequent write attempts.
+
 ## \[2.3.0]
 
 - [`f209b2f2`](https://github.com/tauri-apps/plugins-workspace/commit/f209b2f23cb29133c97ad5961fb46ef794dbe063) ([#2804](https://github.com/tauri-apps/plugins-workspace/pull/2804) by [@renovate](https://github.com/tauri-apps/plugins-workspace/../../renovate)) Updated tauri to 2.6

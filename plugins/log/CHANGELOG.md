@@ -1,5 +1,19 @@
 # Changelog
 
+## \[2.8.0]
+
+- [`2a625adf`](https://github.com/tauri-apps/plugins-workspace/commit/2a625adff30238904035b86b6e2db7595597e857) ([#3065](https://github.com/tauri-apps/plugins-workspace/pull/3065) by [@BinaryMuse](https://github.com/tauri-apps/plugins-workspace/../../BinaryMuse)) Allow specifying a log formatter per target using the `format` method on `Target`.
+- [`ae278ddf`](https://github.com/tauri-apps/plugins-workspace/commit/ae278ddf60203da183fe2266c06a5bdeb909285c) ([#3110](https://github.com/tauri-apps/plugins-workspace/pull/3110) by [@liuzhch1](https://github.com/tauri-apps/plugins-workspace/../../liuzhch1)) Fix log file rotation when exceeding `max_file_size`.
+- [`6de61f85`](https://github.com/tauri-apps/plugins-workspace/commit/6de61f854bee0c1d39e4ce5890b12754b931c163) ([#3113](https://github.com/tauri-apps/plugins-workspace/pull/3113) by [@lucasfernog](https://github.com/tauri-apps/plugins-workspace/../../lucasfernog)) Remove log delays for iOS simulators that are no longer necessary.
+
+## \[2.7.1]
+
+- [`93426f85`](https://github.com/tauri-apps/plugins-workspace/commit/93426f85120f49beb9f40222bff45185a32d54a9) Fixed an issue that caused docs.rs builds to fail. No user facing changes.
+
+## \[2.7.0]
+
+- [`625bb1c0`](https://github.com/tauri-apps/plugins-workspace/commit/625bb1c0965394b88522643731f78ccbcca84add) ([#2965](https://github.com/tauri-apps/plugins-workspace/pull/2965) by [@lucasfernog](https://github.com/tauri-apps/plugins-workspace/../../lucasfernog)) Re-export the log crate.
+
 ## \[2.6.0]
 
 - [`f209b2f2`](https://github.com/tauri-apps/plugins-workspace/commit/f209b2f23cb29133c97ad5961fb46ef794dbe063) ([#2804](https://github.com/tauri-apps/plugins-workspace/pull/2804) by [@renovate](https://github.com/tauri-apps/plugins-workspace/../../renovate)) Updated tauri to 2.6

@@ -1,5 +1,24 @@
 # Changelog
 
+## \[2.5.3]
+
+- [`3d0d2e04`](https://github.com/tauri-apps/plugins-workspace/commit/3d0d2e041bbad9766aebecaeba291a28d8d7bf5c) ([#3163](https://github.com/tauri-apps/plugins-workspace/pull/3163) by [@FabianLars](https://github.com/tauri-apps/plugins-workspace/../../FabianLars)) Properly ignore `with: inAppBrowser` on desktop. This prevents an issue were `open_url` seamingly did nothing on desktop.
+
+## \[2.5.2]
+
+- [`93426f85`](https://github.com/tauri-apps/plugins-workspace/commit/93426f85120f49beb9f40222bff45185a32d54a9) Fixed an issue that caused docs.rs builds to fail. No user facing changes.
+
+## \[2.5.1]
+
+- [`6c9b61fb`](https://github.com/tauri-apps/plugins-workspace/commit/6c9b61fb658145d13893626112fc489f7458aa17) ([#3039](https://github.com/tauri-apps/plugins-workspace/pull/3039) by [@FabianLars](https://github.com/tauri-apps/plugins-workspace/../../FabianLars)) On Android, updated compileSdk to 36.
+- [`67a7bf80`](https://github.com/tauri-apps/plugins-workspace/commit/67a7bf80f8e6f3aec76ebaba0983f0cf0103d3ff) ([#3018](https://github.com/tauri-apps/plugins-workspace/pull/3018) by [@Legend-Master](https://github.com/tauri-apps/plugins-workspace/../../Legend-Master)) Fix opener doesn't open same origin links in the browser
+
+## \[2.5.0]
+
+### enhance
+
+- [`b8056f48`](https://github.com/tauri-apps/plugins-workspace/commit/b8056f484c7144af095d4d6ded1e8adbb9b8a865) ([#2897](https://github.com/tauri-apps/plugins-workspace/pull/2897) by [@petersamokhin](https://github.com/tauri-apps/plugins-workspace/../../petersamokhin)) Allow reveal multiple items in the file explorer.
+
 ## \[2.4.0]
 
 - [`f209b2f2`](https://github.com/tauri-apps/plugins-workspace/commit/f209b2f23cb29133c97ad5961fb46ef794dbe063) ([#2804](https://github.com/tauri-apps/plugins-workspace/pull/2804) by [@renovate](https://github.com/tauri-apps/plugins-workspace/../../renovate)) Updated tauri to 2.6

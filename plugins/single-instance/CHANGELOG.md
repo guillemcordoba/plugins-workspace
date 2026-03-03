@@ -1,5 +1,62 @@
 # Changelog
 
+## \[2.4.0]
+
+### Dependencies
+
+- Upgraded to `deep-link@2.4.7`
+
+### fix
+
+- [`98e2c11e`](https://github.com/tauri-apps/plugins-workspace/commit/98e2c11eefc3ee562f1ed280efe7e8ea6ff0f3b0) ([#3194](https://github.com/tauri-apps/plugins-workspace/pull/3194) by [@mrquantumoff](https://github.com/tauri-apps/plugins-workspace/../../mrquantumoff)) **Breaking Change:** On Linux, the DBus ID/name will now be `<bundle-id>.SingleInstance` instead of `org.<bundle_id_underscores>.SingleInstance` to follow DBus specifications.
+
+  This will break the single-instance mechanism across different app versions if the app was installed multiple times.
+
+  Added `dbus_id` builder method, which can be used to restore previous behavior. For a bundle identifier of `com.tauri.my-example` this would be `dbus_id("org.com_tauri_my_example")`.
+
+## \[2.3.7]
+
+### Dependencies
+
+- Upgraded to `deep-link@2.4.6`
+
+## \[2.3.6]
+
+- [`93426f85`](https://github.com/tauri-apps/plugins-workspace/commit/93426f85120f49beb9f40222bff45185a32d54a9) Fixed an issue that caused docs.rs builds to fail. No user facing changes.
+
+### Dependencies
+
+- Upgraded to `deep-link@2.4.5`
+
+## \[2.3.5]
+
+### Dependencies
+
+- Upgraded to `deep-link@2.4.4`
+
+## \[2.3.4]
+
+### Dependencies
+
+- Upgraded to `deep-link@2.4.3`
+
+## \[2.3.3]
+
+### Dependencies
+
+- Upgraded to `deep-link@2.4.2`
+
+## \[2.3.2]
+
+### Dependencies
+
+- Upgraded to `deep-link@2.4.1`
+
+## \[2.3.1]
+
+- [`6f345870`](https://github.com/tauri-apps/plugins-workspace/commit/6f345870df4e7b187deb869df03b79858e03b4fe) ([#2860](https://github.com/tauri-apps/plugins-workspace/pull/2860) by [@MorpheusXAUT](https://github.com/tauri-apps/plugins-workspace/../../MorpheusXAUT)) Fix D-Bus name replacement logic on Linux to prevent multiple instances from acquiring the same well-known name.\
+  This patch updates the `zbus` dependency to the latest compatible version (`^5.9`) and explicitly sets `RequestNameFlags` to ensure a second instance fails to acquire the D-Bus name when another one is already running.
+
 ## \[2.3.0]
 
 - [`f209b2f2`](https://github.com/tauri-apps/plugins-workspace/commit/f209b2f23cb29133c97ad5961fb46ef794dbe063) ([#2804](https://github.com/tauri-apps/plugins-workspace/pull/2804) by [@renovate](https://github.com/tauri-apps/plugins-workspace/../../renovate)) Updated tauri to 2.6

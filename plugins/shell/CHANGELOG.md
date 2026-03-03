@@ -1,5 +1,27 @@
 # Changelog
 
+## \[2.3.5]
+
+### bug
+
+- [`d4613ff0`](https://github.com/tauri-apps/plugins-workspace/commit/d4613ff0029ea65f5c6895c3a6f8f5668dd1b55e) ([#3234](https://github.com/tauri-apps/plugins-workspace/pull/3234)) Make sidecars work in tests. Executable resolution is aware of the "deps" directory.
+
+## \[2.3.4]
+
+- [`31415eff`](https://github.com/tauri-apps/plugins-workspace/commit/31415effdf5a9ced19934a681cb044a732174088) ([#3183](https://github.com/tauri-apps/plugins-workspace/pull/3183) by [@Tunglies](https://github.com/tauri-apps/plugins-workspace/../../Tunglies)) Docs on example to Encoding usage in `Command::spawn`. No user facing changes.
+
+## \[2.3.3]
+
+- [`93426f85`](https://github.com/tauri-apps/plugins-workspace/commit/93426f85120f49beb9f40222bff45185a32d54a9) Fixed an issue that caused docs.rs builds to fail. No user facing changes.
+
+## \[2.3.2]
+
+- [`6c9b61fb`](https://github.com/tauri-apps/plugins-workspace/commit/6c9b61fb658145d13893626112fc489f7458aa17) ([#3039](https://github.com/tauri-apps/plugins-workspace/pull/3039) by [@FabianLars](https://github.com/tauri-apps/plugins-workspace/../../FabianLars)) On Android, updated compileSdk to 36.
+
+## \[2.3.1]
+
+- [`d865ed47`](https://github.com/tauri-apps/plugins-workspace/commit/d865ed47685c3923e894f7d10ee4c037507037e6) ([#2950](https://github.com/tauri-apps/plugins-workspace/pull/2950) by [@lucasfernog](https://github.com/tauri-apps/plugins-workspace/../../lucasfernog)) Fix sidecar with dots in the filename not working on Windows.
+
 ## \[2.3.0]
 
 - [`f209b2f2`](https://github.com/tauri-apps/plugins-workspace/commit/f209b2f23cb29133c97ad5961fb46ef794dbe063) ([#2804](https://github.com/tauri-apps/plugins-workspace/pull/2804) by [@renovate](https://github.com/tauri-apps/plugins-workspace/../../renovate)) Updated tauri to 2.6
