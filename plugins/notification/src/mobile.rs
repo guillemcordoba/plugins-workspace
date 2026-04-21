@@ -88,10 +88,18 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
             },
         )?;
         let notification = Notification(handle.clone());
+        let app_handle = app.clone();
         if let Ok(PermissionState::Granted) = notification.permission_state() {
             app.listen("tauri://window-created", move |_| {
-                if let Err(err) = notification.register_for_push_notifications() {
-                    log::error!("Error registering for push notifications: {:?}.", err);
+                match notification.register_for_push_notifications() {
+                    Ok(token) => {
+                        if let Err(err) = app_handle.emit("notification://new-fcm-token", &token) {
+                            log::error!("Error emitting FCM token: {:?}.", err);
+                        }
+                    }
+                    Err(err) => {
+                        log::error!("Error registering for push notifications: {:?}.", err);
+                    }
                 }
             });
         }
