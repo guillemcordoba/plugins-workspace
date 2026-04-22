@@ -161,56 +161,51 @@ class NotificationPlugin: Plugin, MessagingDelegate {
   var fcmToken: String?
   var registerInvoke: Invoke?
 
+  private static var apnsHookInstalled = false
+
   override init() {
     super.init()
     notificationManager.notificationHandler = notificationHandler
     notificationHandler.plugin = self
   }
 
-  // Note: This callback is fired at each app startup and whenever a new token is generated.
+  override public func load(webview: WKWebView) {
+    Messaging.messaging().delegate = self
+
+    // Install APNS hook on the live UIApplicationDelegate class as early as
+    // possible — before iOS ever delivers a push token. Firebase's own
+    // AppDelegate proxy doesn't reliably intercept the callback in Tauri's
+    // Rust-backed AppDelegate, so we insert our own forwarder and chain to
+    // any previous implementation via a captured IMP.
+    installApnsDelegateSwizzle()
+  }
+
+  // Called by Firebase whenever a fresh FCM token is available.
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-    Logger.info("Firebase registration token: \(String(describing: fcmToken))")
+    Logger.info("[DashChat] messaging delegate: FCM token=\(String(describing: fcmToken))")
 
     self.fcmToken = fcmToken
 
-    let registerInvoke = self.registerInvoke
-    if let registerInvoke = registerInvoke {
+    guard let token = fcmToken else { return }
+
+    // Always emit the newFcmToken event so JS listeners (whether attached
+    // before or after registerForPushNotifications) can observe every token
+    // delivery, including the initial one.
+    var eventData = JSObject()
+    eventData["token"] = token
+    try? self.trigger("newFcmToken", data: eventData)
+
+    // Also resolve the pending registerForPushNotifications invoke, if any.
+    if let invoke = self.registerInvoke {
       var data = JSObject()
-      data["token"] = fcmToken
-      registerInvoke.resolve(data)
-      self.registerInvoke = nil
-    } else {
-      var data = JSObject()
-      data["token"] = fcmToken
-      try? self.trigger("newFcmToken", data: data)
-    }
-  }
-      
-  @objc func didRegisterWithToken(notification: NSNotification) {
-    guard let deviceToken = notification.object as? Data else {
-      return
-    }
-
-    Messaging.messaging().apnsToken = deviceToken
-  }
-
-  @objc func failedToRegisterWithToken(notification: NSNotification) {
-    guard let error = notification.object as? Error else {
-      return
-    }
-
-    let registerInvoke = self.registerInvoke
-    if let registerInvoke = registerInvoke {
-      registerInvoke.reject(error.localizedDescription)
+      data["token"] = token
+      invoke.resolve(data)
       self.registerInvoke = nil
     }
   }
 
   @objc public func registerForPushNotifications(_ invoke: Invoke) throws {
-    NotificationCenter.default.addObserver(self, selector: #selector(self.didRegisterWithToken(notification:)), name: NSNotification.Name("didRegisterApnToken"), object: nil)
-    NotificationCenter.default.addObserver(self, selector: #selector(self.failedToRegisterWithToken(notification:)), name: NSNotification.Name("failedToRegisterApnToken"), object: nil)
-    FirebaseApp.configure()
-
+    Logger.info("[DashChat] registerForPushNotifications invoked")
     registerInvoke = invoke
 
     DispatchQueue.main.async {
@@ -218,12 +213,84 @@ class NotificationPlugin: Plugin, MessagingDelegate {
       let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
       UNUserNotificationCenter.current().requestAuthorization(
         options: authOptions,
-        completionHandler: { _, _ in }
+        completionHandler: { granted, error in
+          Logger.info("[DashChat] UN authorization granted=\(granted) error=\(String(describing: error))")
+          guard granted else {
+            if let invoke = self.registerInvoke {
+              invoke.reject(error?.localizedDescription ?? "Notification permission denied")
+              self.registerInvoke = nil
+            }
+            return
+          }
+          DispatchQueue.main.async {
+            // User just consented — enable FCM auto-init so Firebase exchanges
+            // the APNS token for an FCM token and our MessagingDelegate fires.
+            Messaging.messaging().isAutoInitEnabled = true
+            Logger.info("[DashChat] calling UIApplication.registerForRemoteNotifications()")
+            UIApplication.shared.registerForRemoteNotifications()
+          }
+        }
       )
+    }
+  }
 
-      Messaging.messaging().delegate = self
-  
-      UIApplication.shared.registerForRemoteNotifications()
+  // Install forwarders for the two APNS UIApplicationDelegate methods.
+  // Captures the previous IMP per selector and chains to it, so Firebase's
+  // ISA-swizzle (when enabled) or any other plugin's swizzle still runs.
+  private func installApnsDelegateSwizzle() {
+    guard !NotificationPlugin.apnsHookInstalled else { return }
+    guard let delegate = UIApplication.shared.delegate else {
+      Logger.error("[DashChat] No UIApplication.delegate at load, cannot install APNS swizzle")
+      return
+    }
+    NotificationPlugin.apnsHookInstalled = true
+
+    let delegateClass: AnyClass = type(of: delegate)
+    let className = String(cString: class_getName(delegateClass))
+    Logger.info("[DashChat] Installing APNS swizzle on \(className)")
+
+    // didRegisterForRemoteNotificationsWithDeviceToken
+    let registerSel = #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
+    typealias RegisterFn = @convention(c) (AnyObject, Selector, UIApplication, Data) -> Void
+    let previousRegisterIMP: IMP? = class_getInstanceMethod(delegateClass, registerSel).map { method_getImplementation($0) }
+    let registerBlock: @convention(block) (AnyObject, UIApplication, Data) -> Void = { selfObj, app, token in
+      Logger.info("[DashChat] APNS swizzle: received token length=\(token.count)")
+      // Set apnsToken so Firebase can exchange APNS → FCM once allowed.
+      // We intentionally do NOT flip isAutoInitEnabled here — that's reserved
+      // for registerForPushNotifications so that no FCM fetch (and no network
+      // call to Google) happens before the user consents.
+      Messaging.messaging().apnsToken = token
+      // Chain to any previously installed handler.
+      if let prev = previousRegisterIMP {
+        unsafeBitCast(prev, to: RegisterFn.self)(selfObj, registerSel, app, token)
+      }
+    }
+    let registerIMP = imp_implementationWithBlock(registerBlock)
+    if let method = class_getInstanceMethod(delegateClass, registerSel) {
+      method_setImplementation(method, registerIMP)
+    } else {
+      class_addMethod(delegateClass, registerSel, registerIMP, "v@:@@")
+    }
+
+    // didFailToRegisterForRemoteNotificationsWithError
+    let failSel = #selector(UIApplicationDelegate.application(_:didFailToRegisterForRemoteNotificationsWithError:))
+    typealias FailFn = @convention(c) (AnyObject, Selector, UIApplication, NSError) -> Void
+    let previousFailIMP: IMP? = class_getInstanceMethod(delegateClass, failSel).map { method_getImplementation($0) }
+    let failBlock: @convention(block) (AnyObject, UIApplication, NSError) -> Void = { [weak self] selfObj, app, error in
+      Logger.error("[DashChat] APNS swizzle: registration failed: \(error.localizedDescription)")
+      if let invoke = self?.registerInvoke {
+        invoke.reject(error.localizedDescription)
+        self?.registerInvoke = nil
+      }
+      if let prev = previousFailIMP {
+        unsafeBitCast(prev, to: FailFn.self)(selfObj, failSel, app, error)
+      }
+    }
+    let failIMP = imp_implementationWithBlock(failBlock)
+    if let method = class_getInstanceMethod(delegateClass, failSel) {
+      method_setImplementation(method, failIMP)
+    } else {
+      class_addMethod(delegateClass, failSel, failIMP, "v@:@@")
     }
   }
 
@@ -345,5 +412,14 @@ class NotificationPlugin: Plugin, MessagingDelegate {
 
 @_cdecl("init_plugin_notification")
 func initPlugin() -> Plugin {
+  // Configure Firebase at plugin load so its default app exists before any
+  // Firebase subsystem queries it (avoids [FirebaseCore][I-COR000003]).
+  // No network calls or identifiers are generated here: auto-init and data
+  // collection are disabled via Info.plist (FirebaseMessagingAutoInitEnabled,
+  // FirebaseDataCollectionDefaultEnabled) until the user consents in
+  // registerForPushNotifications.
+  if FirebaseApp.app() == nil {
+    FirebaseApp.configure()
+  }
   return NotificationPlugin()
 }
