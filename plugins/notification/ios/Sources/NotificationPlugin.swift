@@ -208,13 +208,25 @@ class NotificationPlugin: Plugin, MessagingDelegate {
     Logger.info("registerForPushNotifications invoked")
 
     // If Firebase already delivered a token to our MessagingDelegate earlier
-    // (either from a prior call in this session or from auto-init on launch
-    // after a previous consent), resolve immediately. The delegate only fires
-    // on fresh/changed tokens, so otherwise this invoke would wait forever.
+    // in this session, resolve immediately. The delegate only fires on
+    // fresh/changed tokens, so otherwise this invoke would wait forever.
     if let existingToken = self.fcmToken {
-      Logger.info("registerForPushNotifications: returning cached FCM token")
+      Logger.info("registerForPushNotifications: returning in-memory FCM token")
       var data = JSObject()
       data["token"] = existingToken
+      invoke.resolve(data)
+      return
+    }
+
+    // Also check Firebase's own persisted cache. On app restart after a prior
+    // consented session, Firebase restores the FCM token from its keychain
+    // before our delegate is ever called — the delegate won't fire again for
+    // an unchanged token, so relying on it would hang.
+    if let persistedToken = Messaging.messaging().fcmToken {
+      Logger.info("registerForPushNotifications: returning Firebase-persisted FCM token")
+      self.fcmToken = persistedToken
+      var data = JSObject()
+      data["token"] = persistedToken
       invoke.resolve(data)
       return
     }
