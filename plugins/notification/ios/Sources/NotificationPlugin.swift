@@ -206,31 +206,6 @@ class NotificationPlugin: Plugin, MessagingDelegate {
 
   @objc public func registerForPushNotifications(_ invoke: Invoke) throws {
     Logger.info("registerForPushNotifications invoked")
-
-    // If Firebase already delivered a token to our MessagingDelegate earlier
-    // in this session, resolve immediately. The delegate only fires on
-    // fresh/changed tokens, so otherwise this invoke would wait forever.
-    if let existingToken = self.fcmToken {
-      Logger.info("registerForPushNotifications: returning in-memory FCM token")
-      var data = JSObject()
-      data["token"] = existingToken
-      invoke.resolve(data)
-      return
-    }
-
-    // Also check Firebase's own persisted cache. On app restart after a prior
-    // consented session, Firebase restores the FCM token from its keychain
-    // before our delegate is ever called — the delegate won't fire again for
-    // an unchanged token, so relying on it would hang.
-    if let persistedToken = Messaging.messaging().fcmToken {
-      Logger.info("registerForPushNotifications: returning Firebase-persisted FCM token")
-      self.fcmToken = persistedToken
-      var data = JSObject()
-      data["token"] = persistedToken
-      invoke.resolve(data)
-      return
-    }
-
     registerInvoke = invoke
 
     DispatchQueue.main.async {
@@ -248,16 +223,48 @@ class NotificationPlugin: Plugin, MessagingDelegate {
             return
           }
           DispatchQueue.main.async {
-            // User just consented — enable FCM auto-init so Firebase exchanges
-            // the APNS token for an FCM token and our MessagingDelegate fires.
+            // Enable FCM auto-init and re-arm APNS delivery for this session.
+            // Must run every call (not just first consent) so that after an
+            // app restart the system re-establishes APNS and Firebase refreshes
+            // its APNS<->FCM mapping; otherwise delivered pushes would be silently
+            // dropped even though the FCM token we return looks valid.
             Messaging.messaging().isAutoInitEnabled = true
             Logger.info("calling UIApplication.registerForRemoteNotifications()")
             UIApplication.shared.registerForRemoteNotifications()
 
-            // Also ask Firebase directly for the current FCM token. If one is
-            // already cached (e.g. from a prior session with consent, where
-            // the MessagingDelegate hasn't fired again this session), this
-            // resolves the invoke without waiting on the delegate.
+            // Fast path 1: in-memory token delivered to our MessagingDelegate
+            // earlier in this session. Delegate only fires on fresh/changed
+            // tokens, so we can't rely on it to fire again.
+            if let existingToken = self.fcmToken {
+              Logger.info("resolving with in-memory FCM token")
+              if let invoke = self.registerInvoke {
+                var data = JSObject()
+                data["token"] = existingToken
+                invoke.resolve(data)
+                self.registerInvoke = nil
+              }
+              return
+            }
+
+            // Fast path 2: Firebase's own keychain-persisted token. On app
+            // restart after a prior consented session, this is already
+            // populated before any delegate fire or network round-trip.
+            if let persistedToken = Messaging.messaging().fcmToken {
+              Logger.info("resolving with Firebase-persisted FCM token")
+              self.fcmToken = persistedToken
+              if let invoke = self.registerInvoke {
+                var data = JSObject()
+                data["token"] = persistedToken
+                invoke.resolve(data)
+                self.registerInvoke = nil
+              }
+              return
+            }
+
+            // Slow path: no cached token yet. Ask Firebase for one; the
+            // MessagingDelegate is the fallback if this errors (e.g. APNS
+            // not set yet). Whichever returns a token first wins; the
+            // registerInvoke = nil reset makes them mutually idempotent.
             Messaging.messaging().token { token, error in
               Logger.info("Messaging.token cb token=\(String(describing: token)) error=\(String(describing: error))")
               guard let token = token else { return }
