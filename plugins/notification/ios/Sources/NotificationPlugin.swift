@@ -182,7 +182,7 @@ class NotificationPlugin: Plugin, MessagingDelegate {
 
   // Called by Firebase whenever a fresh FCM token is available.
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-    Logger.info("[DashChat] messaging delegate: FCM token=\(String(describing: fcmToken))")
+    Logger.info("messaging delegate: FCM token=\(String(describing: fcmToken))")
 
     self.fcmToken = fcmToken
 
@@ -205,7 +205,20 @@ class NotificationPlugin: Plugin, MessagingDelegate {
   }
 
   @objc public func registerForPushNotifications(_ invoke: Invoke) throws {
-    Logger.info("[DashChat] registerForPushNotifications invoked")
+    Logger.info("registerForPushNotifications invoked")
+
+    // If Firebase already delivered a token to our MessagingDelegate earlier
+    // (either from a prior call in this session or from auto-init on launch
+    // after a previous consent), resolve immediately. The delegate only fires
+    // on fresh/changed tokens, so otherwise this invoke would wait forever.
+    if let existingToken = self.fcmToken {
+      Logger.info("registerForPushNotifications: returning cached FCM token")
+      var data = JSObject()
+      data["token"] = existingToken
+      invoke.resolve(data)
+      return
+    }
+
     registerInvoke = invoke
 
     DispatchQueue.main.async {
@@ -214,7 +227,7 @@ class NotificationPlugin: Plugin, MessagingDelegate {
       UNUserNotificationCenter.current().requestAuthorization(
         options: authOptions,
         completionHandler: { granted, error in
-          Logger.info("[DashChat] UN authorization granted=\(granted) error=\(String(describing: error))")
+          Logger.info("UN authorization granted=\(granted) error=\(String(describing: error))")
           guard granted else {
             if let invoke = self.registerInvoke {
               invoke.reject(error?.localizedDescription ?? "Notification permission denied")
@@ -226,8 +239,24 @@ class NotificationPlugin: Plugin, MessagingDelegate {
             // User just consented — enable FCM auto-init so Firebase exchanges
             // the APNS token for an FCM token and our MessagingDelegate fires.
             Messaging.messaging().isAutoInitEnabled = true
-            Logger.info("[DashChat] calling UIApplication.registerForRemoteNotifications()")
+            Logger.info("calling UIApplication.registerForRemoteNotifications()")
             UIApplication.shared.registerForRemoteNotifications()
+
+            // Also ask Firebase directly for the current FCM token. If one is
+            // already cached (e.g. from a prior session with consent, where
+            // the MessagingDelegate hasn't fired again this session), this
+            // resolves the invoke without waiting on the delegate.
+            Messaging.messaging().token { token, error in
+              Logger.info("Messaging.token cb token=\(String(describing: token)) error=\(String(describing: error))")
+              guard let token = token else { return }
+              self.fcmToken = token
+              if let invoke = self.registerInvoke {
+                var data = JSObject()
+                data["token"] = token
+                invoke.resolve(data)
+                self.registerInvoke = nil
+              }
+            }
           }
         }
       )
@@ -240,21 +269,21 @@ class NotificationPlugin: Plugin, MessagingDelegate {
   private func installApnsDelegateSwizzle() {
     guard !NotificationPlugin.apnsHookInstalled else { return }
     guard let delegate = UIApplication.shared.delegate else {
-      Logger.error("[DashChat] No UIApplication.delegate at load, cannot install APNS swizzle")
+      Logger.error("No UIApplication.delegate at load, cannot install APNS swizzle")
       return
     }
     NotificationPlugin.apnsHookInstalled = true
 
     let delegateClass: AnyClass = type(of: delegate)
     let className = String(cString: class_getName(delegateClass))
-    Logger.info("[DashChat] Installing APNS swizzle on \(className)")
+    Logger.info("Installing APNS swizzle on \(className)")
 
     // didRegisterForRemoteNotificationsWithDeviceToken
     let registerSel = #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
     typealias RegisterFn = @convention(c) (AnyObject, Selector, UIApplication, Data) -> Void
     let previousRegisterIMP: IMP? = class_getInstanceMethod(delegateClass, registerSel).map { method_getImplementation($0) }
     let registerBlock: @convention(block) (AnyObject, UIApplication, Data) -> Void = { selfObj, app, token in
-      Logger.info("[DashChat] APNS swizzle: received token length=\(token.count)")
+      Logger.info("APNS swizzle: received token length=\(token.count)")
       // Set apnsToken so Firebase can exchange APNS → FCM once allowed.
       // We intentionally do NOT flip isAutoInitEnabled here — that's reserved
       // for registerForPushNotifications so that no FCM fetch (and no network
@@ -277,7 +306,7 @@ class NotificationPlugin: Plugin, MessagingDelegate {
     typealias FailFn = @convention(c) (AnyObject, Selector, UIApplication, NSError) -> Void
     let previousFailIMP: IMP? = class_getInstanceMethod(delegateClass, failSel).map { method_getImplementation($0) }
     let failBlock: @convention(block) (AnyObject, UIApplication, NSError) -> Void = { [weak self] selfObj, app, error in
-      Logger.error("[DashChat] APNS swizzle: registration failed: \(error.localizedDescription)")
+      Logger.error("APNS swizzle: registration failed: \(error.localizedDescription)")
       if let invoke = self?.registerInvoke {
         invoke.reject(error.localizedDescription)
         self?.registerInvoke = nil
