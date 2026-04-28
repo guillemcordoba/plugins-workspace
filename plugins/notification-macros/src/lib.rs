@@ -127,16 +127,20 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         }
         #[cfg(target_os = "ios")]
         #[no_mangle]
-        pub unsafe extern "C" fn receive_notification(notification_str: RustByteSlice) -> *mut tauri_plugin_notification::NotificationData {
+        pub unsafe extern "C" fn receive_notification(
+            notification_str: RustByteSlice,
+            data_dir_str: RustByteSlice,
+        ) -> *mut tauri_plugin_notification::NotificationData {
             let notification: tauri_plugin_notification::NotificationData = serde_json::from_str(notification_str.as_str()).unwrap();
 
-            let new_notification = match #fn_name(notification) {
+            let data_dir = std::path::PathBuf::from(data_dir_str.as_str());
+            let context = tauri_plugin_notification::ReceivePushNotificationContext { data_dir };
+
+            let new_notification = match #fn_name(notification, context) {
                 Some(n) => n,
                 None => tauri_plugin_notification::NotificationData::default()
             };
 
-           // let new_notification_str = serde_json::to_string(&new_notification).unwrap();
-            //let s = &*new_notification_str;
             let boxed_data = Box::new(new_notification);
             Box::into_raw(boxed_data)
         }

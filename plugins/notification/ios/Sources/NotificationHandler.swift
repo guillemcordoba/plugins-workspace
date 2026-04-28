@@ -77,13 +77,15 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
 
   func toActiveNotification(_ request: UNNotificationRequest) -> ActiveNotification {
     let notificationRequest = notificationsMap[request.identifier]
+    let threadIdentifier = request.content.threadIdentifier
     return ActiveNotification(
       id: Int(request.identifier) ?? -1,
       title: request.content.title,
       body: request.content.body,
       sound: notificationRequest?.sound ?? "",
       actionTypeId: request.content.categoryIdentifier,
-      attachments: notificationRequest?.attachments
+      attachments: notificationRequest?.attachments,
+      group: threadIdentifier.isEmpty ? nil : threadIdentifier
     )
   }
 
@@ -109,6 +111,7 @@ struct ActiveNotification: Encodable {
   let sound: String
   let actionTypeId: String
   let attachments: [NotificationAttachment]?
+  let group: String?
 }
 
 struct ReceivedNotification: Encodable {
