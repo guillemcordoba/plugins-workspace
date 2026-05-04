@@ -27,12 +27,12 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             jdata_dir: jni::objects::JString<'local>,
             main: fn(tauri_plugin_notification::NotificationData, tauri_plugin_notification::ReceivePushNotificationContext) -> Option<tauri_plugin_notification::NotificationData>,
         ) -> jni::objects::JString<'local> {
-            
+
             let notification: String = env
                 .get_string(&jnotification)
                 .expect("Couldn't get java string!")
                 .into();
-            
+
             let data_dir: String = env
                 .get_string(&jdata_dir)
                 .expect("Couldn't get java string!")
@@ -46,7 +46,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             let notification_data: tauri_plugin_notification::NotificationData = serde_json::from_str(notification.as_str()).expect("Can't convert notification");
             let received_notification = match main(notification_data, context) {
                 Some(n) => n,
-                None => tauri_plugin_notification::NotificationData::default() 
+                None => tauri_plugin_notification::NotificationData::default()
             };
 
             let jstring: jni::objects::JString = env.new_string(serde_json::to_string(&received_notification).expect("Can't serialize NotificationData").clone()).expect("Coulnd't reserve new string");
@@ -104,7 +104,7 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         }
         #[cfg(target_os = "ios")]
         #[no_mangle]
-        pub unsafe extern "C" fn notification_destroy(data: *mut RustByteSlice) {
+        pub unsafe extern "C" fn notification_destroy(data: *mut tauri_plugin_notification::NotificationData) {
             let _ = Box::from_raw(data);
         }
         #[cfg(target_os = "ios")]
@@ -122,6 +122,15 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
             let named_data = &*data;
             match &named_data.body {
                 Some(b) => RustByteSlice::from(b.as_ref()),
+                None => RustByteSlice::from("")
+            }
+        }
+        #[cfg(target_os = "ios")]
+        #[no_mangle]
+        pub unsafe extern "C" fn notification_route(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
+            let named_data = &*data;
+            match &named_data.route {
+                Some(s) => RustByteSlice::from(s.as_ref()),
                 None => RustByteSlice::from("")
             }
         }

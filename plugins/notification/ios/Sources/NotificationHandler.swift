@@ -4,12 +4,27 @@
 
 import Tauri
 import UserNotifications
+import WebKit
+
+/// userInfo key carrying the route a notification is associated with.
+/// Set by the NSE from `NotificationData.route` (Rust). The plugin uses it to
+/// suppress the foreground banner when the user is already on that route, and
+/// to navigate the webview to it when the notification is tapped.
+private let NOTIFICATION_ROUTE_USER_INFO_KEY = "__notification_route__"
 
 public class NotificationHandler: NSObject, NotificationHandlerProtocol {
 
   public weak var plugin: Plugin?
+  public weak var webView: WKWebView? {
+    didSet { applyPendingRouteIfNeeded() }
+  }
 
   private var notificationsMap = [String: Notification]()
+  /// Route requested by a tap before the webview was ready (app launched by
+  /// tapping a notification from terminated state). Applied as soon as the
+  /// webview is attached and has a URL.
+  private var pendingRoute: String?
+  private var pendingRouteUrlObservation: NSKeyValueObservation?
 
   internal func saveNotification(_ key: String, _ notification: Notification) {
     notificationsMap.updateValue(notification, forKey: key)
@@ -29,21 +44,37 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
     }
   }
 
-  public func willPresent(notification: UNNotification) -> UNNotificationPresentationOptions {
+  public func willPresent(
+    notification: UNNotification,
+    completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
     let notificationData = toActiveNotification(notification.request)
     try? self.plugin?.trigger("notification", data: notificationData)
 
     if let options = notificationsMap[notification.request.identifier] {
       if options.silent ?? false {
-        return UNNotificationPresentationOptions.init(rawValue: 0)
+        completionHandler([])
+        return
       }
     }
 
-    return [
-      .badge,
-      .sound,
-      .alert,
-    ]
+    let defaultOptions: UNNotificationPresentationOptions = [.badge, .sound, .alert]
+
+    let route = notification.request.content.userInfo[NOTIFICATION_ROUTE_USER_INFO_KEY] as? String
+    guard let route, !route.isEmpty, let webView = self.webView else {
+      completionHandler(defaultOptions)
+      return
+    }
+
+    DispatchQueue.main.async {
+      webView.evaluateJavaScript("window.location.pathname") { result, _ in
+        if let path = result as? String, path == route {
+          completionHandler([])
+        } else {
+          completionHandler(defaultOptions)
+        }
+      }
+    }
   }
 
   public func didReceive(response: UNNotificationResponse) {
@@ -73,6 +104,47 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
         inputValue: inputValue,
         notification: toActiveNotification(originalNotificationRequest)
     ))
+
+    // Navigate the webview to the route this notification carries (taps only —
+    // dismiss shouldn't navigate).
+    if actionIdValue == "tap" {
+      let route = originalNotificationRequest.content.userInfo[NOTIFICATION_ROUTE_USER_INFO_KEY] as? String
+      if let route, !route.isEmpty {
+        navigateWebView(to: route)
+      }
+    }
+  }
+
+  private func navigateWebView(to route: String) {
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+      self.pendingRoute = route
+      self.applyPendingRouteIfNeeded()
+    }
+  }
+
+  /// Apply a pending tap-route to the webview if both are ready. If the webview
+  /// is attached but its URL is still nil (the initial page hasn't begun
+  /// loading yet — typical when the app was launched by tapping a notification
+  /// from terminated state), install a one-shot KVO observer on `url` and
+  /// re-run when it becomes available.
+  private func applyPendingRouteIfNeeded() {
+    guard let route = pendingRoute else { return }
+    guard let webView = self.webView else { return }
+    if let currentURL = webView.url,
+       var components = URLComponents(url: currentURL, resolvingAgainstBaseURL: false) {
+      components.path = route
+      if let newURL = components.url {
+        webView.load(URLRequest(url: newURL))
+      }
+      pendingRoute = nil
+      pendingRouteUrlObservation?.invalidate()
+      pendingRouteUrlObservation = nil
+    } else if pendingRouteUrlObservation == nil {
+      pendingRouteUrlObservation = webView.observe(\.url, options: .new) { [weak self] _, _ in
+        DispatchQueue.main.async { self?.applyPendingRouteIfNeeded() }
+      }
+    }
   }
 
   func toActiveNotification(_ request: UNNotificationRequest) -> ActiveNotification {

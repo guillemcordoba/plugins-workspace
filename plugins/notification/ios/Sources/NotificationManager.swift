@@ -6,7 +6,10 @@ import Foundation
 import UserNotifications
 
 @objc public protocol NotificationHandlerProtocol {
-  func willPresent(notification: UNNotification) -> UNNotificationPresentationOptions
+  func willPresent(
+    notification: UNNotification,
+    completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  )
   func didReceive(response: UNNotificationResponse)
 }
 
@@ -24,13 +27,11 @@ import UserNotifications
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
-    var presentationOptions: UNNotificationPresentationOptions? = [.alert, .sound]
-
-    if notification.request.trigger?.isKind(of: UNPushNotificationTrigger.self) != true {
-      presentationOptions = notificationHandler?.willPresent(notification: notification)
+    if let handler = notificationHandler {
+      handler.willPresent(notification: notification, completionHandler: completionHandler)
+    } else {
+      completionHandler([.alert, .sound])
     }
-  
-    completionHandler(presentationOptions ?? [])
   }
 
   public func userNotificationCenter(

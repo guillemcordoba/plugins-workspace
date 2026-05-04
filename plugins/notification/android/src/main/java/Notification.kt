@@ -32,6 +32,9 @@ class Notification {
   var isOngoing = false
   var isAutoCancel = false
   var extra: JSObject? = null
+  /// Plugin-managed: the route this notification is associated with.
+  /// Used by the plugin to navigate the webview when the notification is tapped.
+  var route: String? = null
   var attachments: List<NotificationAttachment>? = null
   var schedule: NotificationSchedule? = null
   var channelId: String? = null

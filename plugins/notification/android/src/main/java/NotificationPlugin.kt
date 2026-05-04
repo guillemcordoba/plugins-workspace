@@ -88,6 +88,10 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   private lateinit var notificationStorage: NotificationStorage
   private var channelManager = ChannelManager(activity)
   private var fcmToken: String? = null
+  /// Route requested by a tap before the webview was ready (app launched by
+  /// tapping a notification from terminated state). Applied once the webview
+  /// is attached and its URL has been set.
+  private var pendingRoute: String? = null
 
   companion object {
     var instance: NotificationPlugin? = null
@@ -102,6 +106,9 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
 
     super.load(webView)
     this.webView = webView
+    // If a tap arrived before the webview was attached, apply it now that the
+    // webview is available.
+    applyPendingRouteIfNeeded()
     notificationStorage = NotificationStorage(activity, jsonMapper())
     
     val manager = TauriNotificationManager(
@@ -146,6 +153,49 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
     val dataJson = manager.handleNotificationActionPerformed(intent, notificationStorage)
     if (dataJson != null) {
       trigger("actionPerformed", dataJson)
+
+      // Navigate the webview to the route this notification carries (taps only —
+      // dismiss shouldn't navigate).
+      val actionId = dataJson.getString("actionId", null)
+      if (actionId == "tap") {
+        val notification = dataJson.getJSObject("notification")
+        val route = notification?.getString("route", null)
+        if (!route.isNullOrEmpty()) {
+          navigateWebView(route)
+        }
+      }
+    }
+  }
+
+  private fun navigateWebView(route: String) {
+    pendingRoute = route
+    applyPendingRouteIfNeeded()
+  }
+
+  /// Apply a pending tap-route to the webview if both are ready. If the
+  /// webview is attached but its URL is still null (the initial page hasn't
+  /// begun loading yet — typical when the app was launched by tapping a
+  /// notification from terminated state), retry on a short delay until it
+  /// becomes available.
+  private fun applyPendingRouteIfNeeded(remainingRetries: Int = 50) {
+    val route = pendingRoute ?: return
+    val view = webView ?: return
+    activity.runOnUiThread {
+      val current = view.url
+      if (current.isNullOrEmpty()) {
+        if (remainingRetries > 0) {
+          view.postDelayed({ applyPendingRouteIfNeeded(remainingRetries - 1) }, 100)
+        }
+        return@runOnUiThread
+      }
+      val newUrl = try {
+        android.net.Uri.parse(current).buildUpon().path(route).build().toString()
+      } catch (_: Exception) {
+        pendingRoute = null
+        return@runOnUiThread
+      }
+      view.loadUrl(newUrl)
+      pendingRoute = null
     }
   }
 

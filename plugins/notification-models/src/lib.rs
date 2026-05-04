@@ -170,6 +170,12 @@ pub struct NotificationData {
     pub attachments: Vec<Attachment>,
     #[serde(default)]
     pub extra: HashMap<String, serde_json::Value>,
+    /// Plugin-managed: the route this notification is associated with.
+    /// When set, the iOS willPresent delegate suppresses the foreground banner
+    /// if the user is already on this path, and the tap handler navigates the
+    /// webview to it on iOS and Android. Optional; unset means "no route".
+    #[serde(default)]
+    pub route: Option<String>,
     #[serde(default)]
     pub ongoing: bool,
     #[serde(default)]
@@ -202,6 +208,7 @@ impl Default for NotificationData {
             icon_color: None,
             attachments: Vec::new(),
             extra: Default::default(),
+            route: None,
             ongoing: false,
             auto_cancel: false,
             silent: false,

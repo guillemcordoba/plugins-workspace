@@ -171,6 +171,7 @@ class NotificationPlugin: Plugin, MessagingDelegate {
 
   override public func load(webview: WKWebView) {
     Messaging.messaging().delegate = self
+    notificationHandler.webView = webview
 
     // Install APNS hook on the live UIApplicationDelegate class as early as
     // possible — before iOS ever delivers a push token. Firebase's own
