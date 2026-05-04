@@ -39,12 +39,7 @@ import UserNotifications
     didReceive response: UNNotificationResponse,
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
-    print("dd", response.notification.request.trigger)
-    print("nh", notificationHandler)
-    //if response.notification.request.trigger?.isKind(of: UNPushNotificationTrigger.self) != true {
-      notificationHandler?.didReceive(response: response)
-    //}
-
+    notificationHandler?.didReceive(response: response)
     completionHandler()
   }
 }
