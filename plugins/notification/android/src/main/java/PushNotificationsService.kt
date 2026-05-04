@@ -60,6 +60,14 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
 
         if (!(modifiedNotification.title == null && modifiedNotification.body == null)) {
+            // Mirror iOS `willPresent`: if the user is already foregrounded on
+            // the route this notification points at, don't show a banner.
+            val route = modifiedNotification.route
+            if (!route.isNullOrEmpty()
+                && NotificationPlugin.instance?.isViewingRoute(route) == true) {
+                Log.i("PushNotificationService", "Suppressing notification: user is viewing $route")
+                return
+            }
             modifiedNotification.sourceJson = notification
             manager.schedule(modifiedNotification)
         }

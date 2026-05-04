@@ -27,6 +27,8 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.installations.FirebaseInstallations
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 const val LOCAL_NOTIFICATIONS = "permissionState"
 
@@ -92,12 +94,50 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   /// tapping a notification from terminated state). Applied once the webview
   /// is attached and its URL has been set.
   private var pendingRoute: String? = null
+  /// Tracks whether the activity is currently in the foreground. Mirrors the
+  /// iOS `willPresent` semantics: route-suppression only applies while the
+  /// app is foregrounded; backgrounded notifications are always shown.
+  @Volatile private var isForeground: Boolean = false
 
   companion object {
     var instance: NotificationPlugin? = null
 
     fun triggerNotification(notification: Notification) {
       instance?.triggerObject("notification", notification)
+    }
+  }
+
+  override fun onResume() {
+    super.onResume()
+    isForeground = true
+  }
+
+  override fun onPause() {
+    super.onPause()
+    isForeground = false
+  }
+
+  /// Returns true iff the activity is foregrounded and the webview's current
+  /// path equals `route`. Mirrors the iOS `willPresent` foreground-suppression
+  /// check. Called from the FCM service thread (`PushNotificationsService`),
+  /// so the JS evaluation is dispatched to the UI thread and awaited briefly.
+  fun isViewingRoute(route: String): Boolean {
+    if (!isForeground) return false
+    val view = webView ?: return false
+
+    val latch = CountDownLatch(1)
+    var currentPath: String? = null
+    activity.runOnUiThread {
+      view.evaluateJavascript("window.location.pathname") { jsResult ->
+        // evaluateJavascript returns a JSON-encoded value, e.g. "\"/foo\"".
+        currentPath = jsResult?.removeSurrounding("\"")
+        latch.countDown()
+      }
+    }
+    return try {
+      if (latch.await(500, TimeUnit.MILLISECONDS)) currentPath == route else false
+    } catch (_: InterruptedException) {
+      false
     }
   }
 
