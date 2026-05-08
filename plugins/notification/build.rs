@@ -102,6 +102,8 @@ fn modify_android_sources() {
 
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").expect("No OUT_DIR variable found"));
 
+    println!("cargo:rerun-if-changed=android");
+
     copy_dir_all(PathBuf::from("android"), out_dir.join("android"))
         .expect("Failed to copy over the android folder");
 

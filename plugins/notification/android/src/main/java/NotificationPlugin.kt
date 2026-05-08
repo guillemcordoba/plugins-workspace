@@ -11,6 +11,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import android.webkit.WebView
 import app.tauri.PermissionState
 import app.tauri.annotation.Command
@@ -23,6 +24,9 @@ import app.tauri.plugin.JSArray
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import app.tauri.Logger
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
@@ -97,6 +101,14 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   /// Tracks whether the activity is currently in the foreground. Mirrors the
   /// iOS `willPresent` semantics: route-suppression only applies while the
   /// app is foregrounded; backgrounded notifications are always shown.
+  ///
+  /// Driven by a LifecycleEventObserver attached to ProcessLifecycleOwner in
+  /// `load()` (rather than overriding the plugin's own `onResume/onPause`),
+  /// because Tauri may load this plugin *after* the activity's first
+  /// `onResume()` has already iterated its plugins — in which case the
+  /// override would never fire for the initial transition. The observer fires
+  /// synchronously on registration with the current state, so we get the
+  /// correct value regardless of load order.
   @Volatile private var isForeground: Boolean = false
 
   companion object {
@@ -107,23 +119,21 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
     }
   }
 
-  override fun onResume() {
-    super.onResume()
-    isForeground = true
-  }
-
-  override fun onPause() {
-    super.onPause()
-    isForeground = false
-  }
-
   /// Returns true iff the activity is foregrounded and the webview's current
   /// path equals `route`. Mirrors the iOS `willPresent` foreground-suppression
   /// check. Called from the FCM service thread (`PushNotificationsService`),
   /// so the JS evaluation is dispatched to the UI thread and awaited briefly.
   fun isViewingRoute(route: String): Boolean {
-    if (!isForeground) return false
-    val view = webView ?: return false
+    Log.i("NotificationPlugin", "isViewingRoute(\"$route\"): isForeground=$isForeground, webView=${webView != null}")
+    if (!isForeground) {
+      Log.i("NotificationPlugin", "isViewingRoute: bail — not foreground")
+      return false
+    }
+    val view = webView
+    if (view == null) {
+      Log.i("NotificationPlugin", "isViewingRoute: bail — webView is null")
+      return false
+    }
 
     val latch = CountDownLatch(1)
     var currentPath: String? = null
@@ -131,18 +141,48 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
       view.evaluateJavascript("window.location.pathname") { jsResult ->
         // evaluateJavascript returns a JSON-encoded value, e.g. "\"/foo\"".
         currentPath = jsResult?.removeSurrounding("\"")
+        Log.i("NotificationPlugin", "isViewingRoute: evaluateJavascript returned raw=$jsResult, parsed=$currentPath")
         latch.countDown()
       }
     }
     return try {
-      if (latch.await(500, TimeUnit.MILLISECONDS)) currentPath == route else false
+      val signaled = latch.await(500, TimeUnit.MILLISECONDS)
+      val matches = currentPath == route
+      Log.i("NotificationPlugin", "isViewingRoute: signaled=$signaled, currentPath=$currentPath, route=$route, matches=$matches")
+      if (signaled) matches else false
     } catch (_: InterruptedException) {
+      Log.i("NotificationPlugin", "isViewingRoute: interrupted")
       false
     }
   }
 
   override fun load(webView: WebView) {
     instance = this
+    Log.i("NotificationPlugin", "load: instance set, webView attached")
+
+    // Observe the activity's lifecycle so we know whether it's foregrounded.
+    // Done here (rather than via the plugin's onResume/onPause overrides)
+    // because Tauri may load this plugin after the activity's first onResume
+    // has already iterated its plugin set — in which case those overrides
+    // never fire for the initial transition. addObserver dispatches all
+    // pending events to bring the observer to the registry's current state,
+    // so we get the right value even when registering post-resume.
+    // Lifecycle registration must run on the main thread.
+    activity.runOnUiThread {
+      (activity as LifecycleOwner).lifecycle.addObserver(LifecycleEventObserver { _, event ->
+        when (event) {
+          Lifecycle.Event.ON_RESUME -> {
+            isForeground = true
+            Log.i("NotificationPlugin", "lifecycle ON_RESUME: isForeground=true")
+          }
+          Lifecycle.Event.ON_PAUSE -> {
+            isForeground = false
+            Log.i("NotificationPlugin", "lifecycle ON_PAUSE: isForeground=false")
+          }
+          else -> {}
+        }
+      })
+    }
 
     super.load(webView)
     this.webView = webView
