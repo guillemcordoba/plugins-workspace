@@ -182,6 +182,10 @@ pub struct NotificationData {
     pub auto_cancel: bool,
     #[serde(default)]
     pub silent: bool,
+    /// Render with MessagingStyle on Android. Consumer must use a stable `id`
+    /// per conversation so messages accumulate. title=sender, body=text.
+    #[serde(default)]
+    pub messaging_style: bool,
 }
 
 fn default_id() -> i32 {
@@ -212,6 +216,7 @@ impl Default for NotificationData {
             ongoing: false,
             auto_cancel: false,
             silent: false,
+            messaging_style: false,
         }
     }
 }

@@ -35,6 +35,7 @@ fn google_services_path() -> Result<Option<PathBuf>, String> {
             "TAURI_ANDROID_PROJECT_PATH is not defined: are you building with tauri build?",
         ));
     };
+    println!("cargo:rerun-if-changed=android");
     println!(
         "cargo:rerun-if-changed={}/google-services.json",
         android_project_path_str

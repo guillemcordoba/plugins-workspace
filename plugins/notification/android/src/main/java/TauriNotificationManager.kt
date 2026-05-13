@@ -22,6 +22,7 @@ import android.os.Build.VERSION.SDK_INT
 import android.os.UserManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.Person
 import androidx.core.app.RemoteInput
 import app.tauri.Logger
 import app.tauri.plugin.JSObject
@@ -117,11 +118,40 @@ class TauriNotificationManager(
   }
 
   private fun trigger(notificationManager: NotificationManagerCompat, notification: Notification): Int {
-    dismissVisibleNotification(notification.id)
+    // For MessagingStyle, skip the dismiss: notify() updates in place and
+    // buildMessagingStyle needs the previous notification's history.
+    if (!notification.isMessagingStyle) {
+      dismissVisibleNotification(notification.id)
+    }
     cancelTimerForNotification(notification.id)
     buildNotification(notificationManager, notification)
 
     return notification.id
+  }
+
+  /**
+   * Build a MessagingStyle, restoring the conversation's history from the
+   * existing notification at this id (if any) and appending the new message.
+   * Requires the consumer to use a stable id per conversation.
+   */
+  private fun buildMessagingStyle(notification: Notification): NotificationCompat.MessagingStyle {
+    val sender = Person.Builder().setName(notification.title ?: " ").build()
+    // AndroidX rejects an empty name; consumer can override by posting their
+    // own MessagingStyle. Self is invisible unless we add user-sent messages.
+    val selfPerson = Person.Builder().setName(" ").build()
+    val existing = getActiveNotificationById(notification.id)
+      ?.let { NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(it) }
+    val style = existing ?: NotificationCompat.MessagingStyle(selfPerson)
+    style.addMessage(notification.body ?: "", System.currentTimeMillis(), sender)
+    return style
+  }
+
+  private fun getActiveNotificationById(id: Int): android.app.Notification? {
+    val sys = context.getSystemService(NotificationManager::class.java) ?: return null
+    for (sbn in sys.activeNotifications) {
+      if (sbn.id == id) return sbn.notification
+    }
+    return null
   }
 
   fun schedule(notification: Notification): Int {
@@ -161,7 +191,10 @@ class TauriNotificationManager(
       .setOngoing(notification.isOngoing)
       .setPriority(NotificationCompat.PRIORITY_DEFAULT)
       .setGroupSummary(notification.isGroupSummary)
-    if (notification.largeBody != null) {
+    if (notification.isMessagingStyle) {
+      mBuilder.setStyle(buildMessagingStyle(notification))
+      mBuilder.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
+    } else if (notification.largeBody != null) {
       // support multiline text
       mBuilder.setStyle(
         NotificationCompat.BigTextStyle()

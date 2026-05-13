@@ -31,6 +31,7 @@ class Notification {
   var isGroupSummary = false
   var isOngoing = false
   var isAutoCancel = false
+  var isMessagingStyle = false
   var extra: JSObject? = null
   /// Plugin-managed: the route this notification is associated with.
   /// Used by the plugin to navigate the webview when the notification is tapped.
