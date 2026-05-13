@@ -85,6 +85,9 @@ class TauriNotificationManager(
     } catch (_: JSONException) {
     }
     dataJson.put("notification", request)
+    // When the last child of a group is dismissed by tap, cancel the lingering
+    // summary so the bundle doesn't stay in the tray empty.
+    request?.optString("group")?.takeIf { it.isNotEmpty() }?.let { refreshGroupSummary(it) }
     return dataJson
   }
 
@@ -124,9 +127,56 @@ class TauriNotificationManager(
       dismissVisibleNotification(notification.id)
     }
     cancelTimerForNotification(notification.id)
+    // Post a minimal summary BEFORE the child so the group is registered when
+    // the first notification lands — otherwise some launchers tag it as
+    // standalone and the promotion sticks.
+    maybePostGroupSummary(notificationManager, notification)
     buildNotification(notificationManager, notification)
 
     return notification.id
+  }
+
+  /**
+   * Post a minimal group summary so notifications sharing a group key bundle
+   * into a single tray entry. The launcher renders each child itself; the
+   * summary just needs to exist.
+   */
+  @SuppressLint("MissingPermission")
+  private fun maybePostGroupSummary(
+    notificationManager: NotificationManagerCompat,
+    notification: Notification,
+  ) {
+    val group = notification.group ?: return
+    if (notification.isGroupSummary) return
+    if (notification.schedule != null) return
+
+    val channelId = notification.channelId ?: DEFAULT_NOTIFICATION_CHANNEL_ID
+    val builder = NotificationCompat.Builder(context, channelId)
+      .setSmallIcon(notification.getSmallIcon(context, getDefaultSmallIcon(context)))
+      .setGroup(group)
+      .setGroupSummary(true)
+      .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+      .setOnlyAlertOnce(true)
+      .setVisibility(notification.visibility ?: NotificationCompat.VISIBILITY_PRIVATE)
+    val iconColor = notification.getIconColor(config?.iconColor ?: "")
+    if (iconColor.isNotEmpty()) {
+      try {
+        builder.color = Color.parseColor(iconColor)
+      } catch (_: IllegalArgumentException) {
+      }
+    }
+    notificationManager.notify(group.hashCode(), builder.build())
+  }
+
+  private fun refreshGroupSummary(group: String) {
+    val summaryId = group.hashCode()
+    val sys = context.getSystemService(NotificationManager::class.java) ?: return
+    val hasChildren = sys.activeNotifications.any { sbn ->
+      sbn.id != summaryId && sbn.notification.group == group
+    }
+    if (!hasChildren) {
+      NotificationManagerCompat.from(context).cancel(summaryId)
+    }
   }
 
   /**
