@@ -31,8 +31,6 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.installations.FirebaseInstallations
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 const val LOCAL_NOTIFICATIONS = "permissionState"
 
@@ -119,40 +117,33 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
     }
   }
 
-  /// Returns true iff the activity is foregrounded and the webview's current
-  /// path equals `route`. Mirrors the iOS `willPresent` foreground-suppression
-  /// check. Called from the FCM service thread (`PushNotificationsService`),
-  /// so the JS evaluation is dispatched to the UI thread and awaited briefly.
-  fun isViewingRoute(route: String): Boolean {
+  /// Invokes `callback(true)` iff the activity is foregrounded and the
+  /// webview's current path equals `route`; otherwise `callback(false)`.
+  /// Mirrors iOS `willPresent` foreground-suppression.
+  ///
+  /// Always async because the canonical query path is
+  /// `WebView.evaluateJavascript`, whose result is delivered on the UI thread.
+  /// A synchronous wrapper around it would deadlock when called from the UI
+  /// thread (Tauri `@Command` handlers), so all callers must accept a
+  /// callback. The callback runs on the UI thread.
+  fun isViewingRoute(route: String, callback: (Boolean) -> Unit) {
     Log.i("NotificationPlugin", "isViewingRoute(\"$route\"): isForeground=$isForeground, webView=${webView != null}")
     if (!isForeground) {
-      Log.i("NotificationPlugin", "isViewingRoute: bail — not foreground")
-      return false
+      callback(false)
+      return
     }
     val view = webView
     if (view == null) {
-      Log.i("NotificationPlugin", "isViewingRoute: bail — webView is null")
-      return false
+      callback(false)
+      return
     }
-
-    val latch = CountDownLatch(1)
-    var currentPath: String? = null
     activity.runOnUiThread {
       view.evaluateJavascript("window.location.pathname") { jsResult ->
-        // evaluateJavascript returns a JSON-encoded value, e.g. "\"/foo\"".
-        currentPath = jsResult?.removeSurrounding("\"")
-        Log.i("NotificationPlugin", "isViewingRoute: evaluateJavascript returned raw=$jsResult, parsed=$currentPath")
-        latch.countDown()
+        val currentPath = jsResult?.removeSurrounding("\"")
+        val matches = currentPath == route
+        Log.i("NotificationPlugin", "isViewingRoute: currentPath=$currentPath, route=$route, matches=$matches")
+        callback(matches)
       }
-    }
-    return try {
-      val signaled = latch.await(500, TimeUnit.MILLISECONDS)
-      val matches = currentPath == route
-      Log.i("NotificationPlugin", "isViewingRoute: signaled=$signaled, currentPath=$currentPath, route=$route, matches=$matches")
-      if (signaled) matches else false
-    } catch (_: InterruptedException) {
-      Log.i("NotificationPlugin", "isViewingRoute: interrupted")
-      false
     }
   }
 
@@ -307,9 +298,29 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   @Command
   fun show(invoke: Invoke) {
     val notification = invoke.parseArgs(Notification::class.java)
+
+    // Mirror PushNotificationsService.kt: if the activity is foregrounded
+    // on the route this notification points at, don't post a banner. The
+    // user is already looking at the relevant screen.
+    val route = notification.route
+    if (!route.isNullOrEmpty()) {
+      isViewingRoute(route) { isViewing ->
+        if (isViewing) {
+          Log.i("NotificationPlugin", "show: suppressing notification, user is viewing route $route")
+          invoke.resolveObject(0)
+        } else {
+          scheduleAndResolve(invoke, notification)
+        }
+      }
+      return
+    }
+
+    scheduleAndResolve(invoke, notification)
+  }
+
+  private fun scheduleAndResolve(invoke: Invoke, notification: Notification) {
     notification.sourceJson = jsonMapper().writeValueAsString(notification)
     val id = manager.schedule(notification)
-
     invoke.resolveObject(id)
   }
 

@@ -5,7 +5,7 @@
 use serde::de::DeserializeOwned;
 use tauri::{
     plugin::{PermissionState, PluginApi},
-    AppHandle, Runtime,
+    AppHandle, Manager, Runtime,
 };
 
 use crate::NotificationBuilder;
@@ -25,6 +25,16 @@ pub struct Notification<R: Runtime>(AppHandle<R>);
 
 impl<R: Runtime> crate::NotificationBuilder<R> {
     pub fn show(self) -> crate::Result<()> {
+        // Plugin-managed foreground-suppression. Mirrors iOS `willPresent`
+        // and Android `isViewingRoute`: if the main window is focused and the
+        // webview is on the route this notification points at, don't post a
+        // banner — the user is already on that screen.
+        if let Some(route) = self.data.route.as_deref().filter(|r| !r.is_empty()) {
+            if is_viewing_route(&self.app, route) {
+                return Ok(());
+            }
+        }
+
         let mut notification = imp::Notification::new(self.app.config().identifier.clone());
 
         if let Some(title) = self
@@ -66,6 +76,16 @@ impl<R: Runtime> Notification<R> {
     pub fn permission_state(&self) -> crate::Result<PermissionState> {
         Ok(PermissionState::Granted)
     }
+}
+
+fn is_viewing_route<R: Runtime>(app: &AppHandle<R>, route: &str) -> bool {
+    let Some(window) = app.get_webview_window("main") else {
+        return false;
+    };
+    if !window.is_focused().unwrap_or(false) {
+        return false;
+    }
+    matches!(window.url(), Ok(url) if url.path() == route)
 }
 
 mod imp {

@@ -212,6 +212,20 @@ impl<R: Runtime> NotificationBuilder<R> {
         self.data.silent = true;
         self
     }
+
+    /// Plugin-managed route this notification is associated with.
+    /// See [`NotificationData::route`] for foreground-suppression and tap-navigation semantics.
+    pub fn route(mut self, route: impl Into<String>) -> Self {
+        self.data.route.replace(route.into());
+        self
+    }
+
+    /// Render with MessagingStyle on Android. Use a stable `id` per conversation
+    /// so messages accumulate.
+    pub fn messaging_style(mut self) -> Self {
+        self.data.messaging_style = true;
+        self
+    }
 }
 
 /// Extensions to [`tauri::App`], [`tauri::AppHandle`], [`tauri::WebviewWindow`], [`tauri::Webview`] and [`tauri::Window`] to access the notification APIs.

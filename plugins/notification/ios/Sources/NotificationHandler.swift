@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import Tauri
+import UIKit
 import UserNotifications
 import WebKit
 
@@ -41,6 +42,27 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
     let center = UNUserNotificationCenter.current()
     center.getNotificationSettings { settings in
       completion?(settings.authorizationStatus)
+    }
+  }
+
+  /// Mirrors the Android `isViewingRoute` check and the iOS `willPresent`
+  /// suppression: the user is "viewing" the route iff the app is active in
+  /// the foreground and the webview is on that path. Used by the `show`
+  /// command to skip posting a banner when the user is already on the
+  /// relevant screen. Calls `completion` on the main thread.
+  public func isViewingRoute(_ route: String, completion: @escaping (Bool) -> Void) {
+    DispatchQueue.main.async { [weak self] in
+      guard let webView = self?.webView else {
+        completion(false)
+        return
+      }
+      if UIApplication.shared.applicationState != .active {
+        completion(false)
+        return
+      }
+      webView.evaluateJavaScript("window.location.pathname") { result, _ in
+        completion((result as? String) == route)
+      }
     }
   }
 

@@ -39,15 +39,19 @@ func makeNotificationContent(_ notification: Notification) throws -> UNNotificat
   }
 
   var userInfo: [String: Any] = [:]
-  
+
   if let extra = notification.extra {
     userInfo["__EXTRA__"] = extra
   }
-  
+
   if let schedule = notification.schedule {
     userInfo["__SCHEDULE__"] = scheduleToDictionary(schedule)
   }
-  
+
+  if let route = notification.route, !route.isEmpty {
+    userInfo["__notification_route__"] = route
+  }
+
   content.userInfo = userInfo
 
   if let actionTypeId = notification.actionTypeId {

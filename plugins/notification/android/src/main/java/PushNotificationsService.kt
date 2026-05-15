@@ -59,22 +59,32 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         Log.i("PushNotificationService ", "Notifications :: $notification")
         val modifiedNotification = jsonMapper().readValue(notification, Notification::class.java)
 
-        if (!(modifiedNotification.title == null && modifiedNotification.body == null)) {
-            // Mirror iOS `willPresent`: if the user is already foregrounded on
-            // the route this notification points at, don't show a banner.
-            val route = modifiedNotification.route
-            val pluginInstance = NotificationPlugin.instance
-            Log.i("PushNotificationService", "Suppression check: route=$route, pluginInstance=${pluginInstance != null}")
-            if (!route.isNullOrEmpty()
-                && pluginInstance?.isViewingRoute(route) == true) {
-                Log.i("PushNotificationService", "Suppressing notification: user is viewing $route")
-                return
-            }
-            Log.i("PushNotificationService", "Showing notification (no suppression)")
+        if (modifiedNotification.title == null && modifiedNotification.body == null) {
+            Log.i("PushNotificationService", "Skipping notification: title and body both null")
+            return
+        }
+
+        val scheduleNotification = {
             modifiedNotification.sourceJson = notification
             manager.schedule(modifiedNotification)
+        }
+
+        // Mirror iOS `willPresent`: if the user is already foregrounded on the
+        // route this notification points at, don't show a banner.
+        val route = modifiedNotification.route
+        val pluginInstance = NotificationPlugin.instance
+        if (!route.isNullOrEmpty() && pluginInstance != null) {
+            pluginInstance.isViewingRoute(route) { isViewing ->
+                if (isViewing) {
+                    Log.i("PushNotificationService", "Suppressing notification: user is viewing $route")
+                } else {
+                    Log.i("PushNotificationService", "Showing notification (no suppression)")
+                    scheduleNotification()
+                }
+            }
         } else {
-            Log.i("PushNotificationService", "Skipping notification: title and body both null")
+            Log.i("PushNotificationService", "Showing notification (no route or no plugin instance)")
+            scheduleNotification()
         }
     }
 

@@ -76,6 +76,10 @@ struct Notification: Decodable {
   var actionTypeId: String?
   var summary: String?
   var silent: Bool?
+  /// Plugin-managed route. When set, `willPresent` suppresses the foreground
+  /// banner if the user is already viewing that path, and the tap handler
+  /// navigates the webview to it on iOS. Mirrors the field on Android.
+  var route: String?
 }
 
 struct RemoveActiveNotification: Decodable {
@@ -345,6 +349,27 @@ class NotificationPlugin: Plugin, MessagingDelegate {
 
   @objc public func show(_ invoke: Invoke) throws {
     let notification = try invoke.parseArgs(Notification.self)
+
+    // Mirror Android `isViewingRoute`: if the app is foregrounded on the route
+    // this notification points at, don't post a banner — the user is already
+    // on that screen. willPresent provides the same suppression once the
+    // banner is in flight; this guard avoids ever enqueueing it.
+    if let route = notification.route, !route.isEmpty {
+      notificationHandler.isViewingRoute(route) { [weak self] isViewing in
+        if isViewing {
+          invoke.resolve(0)
+          return
+        }
+        do {
+          let request = try showNotification(invoke: invoke, notification: notification)
+          self?.notificationHandler.saveNotification(request.identifier, notification)
+          invoke.resolve(Int(request.identifier) ?? -1)
+        } catch {
+          invoke.reject(error.localizedDescription)
+        }
+      }
+      return
+    }
 
     let request = try showNotification(invoke: invoke, notification: notification)
     notificationHandler.saveNotification(request.identifier, notification)
