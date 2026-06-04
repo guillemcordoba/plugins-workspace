@@ -193,8 +193,9 @@ pub struct NotificationData {
     ///
     /// On Android, used as the MessagingStyle sender avatar (`Person.icon`)
     /// when `conversation_style` is set, and as the regular `setLargeIcon`
-    /// otherwise. On iOS, exposed to the notification service extension and
-    /// attached as a `UNNotificationAttachment`.
+    /// otherwise. On iOS 15+, used as the Communication Notification
+    /// sender avatar (`INPerson.image`) when `conversation_style` is set
+    /// and a `route` / `body` are present; ignored otherwise.
     pub large_icon_bytes: Option<String>,
     pub icon_color: Option<String>,
     #[serde(default)]

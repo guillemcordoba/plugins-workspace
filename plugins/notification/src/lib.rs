@@ -177,9 +177,9 @@ impl<R: Runtime> NotificationBuilder<R> {
     ///
     /// On Android, used as the MessagingStyle sender avatar when
     /// `conversation_style` is set, otherwise as the regular large icon.
-    /// On iOS, exposed to the notification service extension and attached
-    /// as a `UNNotificationAttachment` so the image renders in the
-    /// notification banner.
+    /// On iOS 15+, used as the Communication Notification sender avatar
+    /// when `conversation_style` is set and a `route` / `body` are
+    /// present; ignored otherwise.
     pub fn large_icon_bytes(mut self, large_icon_bytes: impl Into<String>) -> Self {
         self.data.large_icon_bytes.replace(large_icon_bytes.into());
         self

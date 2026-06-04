@@ -64,6 +64,19 @@ struct NotificationAttachment: Codable {
   let options: NotificationAttachmentOptions?
 }
 
+/// Per-conversation data needed to render the notification as a
+/// Communication Notification (iOS 15+). Mirrors the Rust
+/// `ConversationStyle`. When set, the plugin builds an
+/// `INSendMessageIntent` so the sender's avatar replaces the app icon,
+/// matching the NSE / background-push path.
+struct ConversationStyle: Decodable {
+  /// Stable identifier for the message sender — used as the
+  /// `INPersonHandle.value` so successive messages from the same sender
+  /// (even within a group thread) are attributed to one person. Falls
+  /// back to the notification's `route` when unset.
+  var senderId: String?
+}
+
 struct NotificationPluginConfig: Decodable {
   /// Default notification sound. "default" → system default; otherwise a
   /// bundled file name. Used when a notification does not specify its own.
@@ -90,6 +103,16 @@ struct Notification: Decodable {
   /// banner if the user is already viewing that path, and the tap handler
   /// navigates the webview to it on iOS. Mirrors the field on Android.
   var route: String?
+  /// Base64-encoded avatar bytes (PNG/JPEG; optional
+  /// `data:image/...;base64,` prefix accepted). Consumed by the iOS 15+
+  /// Communication Notification path as the sender's avatar; ignored on
+  /// iOS < 15 or when `conversationStyle` / `route` / `body` is missing.
+  var largeIconBytes: String?
+  /// Opt into the Communication Notification path on iOS 15+. Requires
+  /// the `com.apple.developer.usernotifications.communication` entitlement
+  /// on the host app. Without this field the notification renders as a
+  /// plain title/body banner.
+  var conversationStyle: ConversationStyle?
 }
 
 struct RemoveActiveNotification: Decodable {

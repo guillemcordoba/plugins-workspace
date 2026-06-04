@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
+import Intents
 import Tauri
 import UserNotifications
 
@@ -85,7 +86,103 @@ func makeNotificationContent(_ notification: Notification, pluginConfig: Notific
     content.attachments = try makeAttachments(attachments)
   }
 
+  // iOS 15+ Communication Notifications: build an INSendMessageIntent so
+  // the sender's avatar replaces the app icon (matching the NSE /
+  // background-push path). Skipped on iOS < 15 or when any required input
+  // is missing — those cases deliver a plain title/body banner.
+  if #available(iOS 15.0, *),
+     notification.conversationStyle != nil,
+     let route = notification.route, !route.isEmpty,
+     let body = notification.body, !body.isEmpty,
+     let iconBytes = notification.largeIconBytes, !iconBytes.isEmpty,
+     let avatarData = decodeBase64DataURL(iconBytes) {
+    let senderHandle = notification.conversationStyle?.senderId?.nilIfEmpty ?? route
+    if let updated = communicationNotificationContent(
+      from: content,
+      senderHandle: senderHandle,
+      conversationId: route,
+      displayName: notification.title,
+      body: body,
+      avatarData: avatarData
+    ) {
+      return updated
+    }
+  }
+
   return content
+}
+
+/// Decodes a base64 data-URL (e.g. `data:image/png;base64,…`) or a bare
+/// base64 string into raw bytes.
+private func decodeBase64DataURL(_ s: String) -> Data? {
+  let stripped: String
+  if let range = s.range(of: "base64,") {
+    stripped = String(s[range.upperBound...])
+  } else {
+    stripped = s
+  }
+  return Data(base64Encoded: stripped)
+}
+
+private extension String {
+  var nilIfEmpty: String? { isEmpty ? nil : self }
+}
+
+/// Build an `INSendMessageIntent` for the incoming message and use
+/// `UNMutableNotificationContent.updating(from:)` to produce a
+/// Communication Notification with the avatar in the sender slot.
+/// Mirrors the NSE's intent-construction logic so the in-app foreground
+/// and background-push paths render the same notification.
+@available(iOS 15.0, *)
+private func communicationNotificationContent(
+  from base: UNMutableNotificationContent,
+  senderHandle: String,
+  conversationId: String,
+  displayName: String,
+  body: String,
+  avatarData: Data
+) -> UNNotificationContent? {
+  let avatar = INImage(imageData: avatarData)
+  let handle = INPersonHandle(value: senderHandle, type: .unknown)
+  let sender = INPerson(
+    personHandle: handle,
+    nameComponents: nil,
+    displayName: displayName,
+    image: avatar,
+    contactIdentifier: nil,
+    customIdentifier: senderHandle
+  )
+
+  let intent = INSendMessageIntent(
+    recipients: nil,
+    outgoingMessageType: .outgoingMessageText,
+    content: body,
+    speakableGroupName: nil,
+    conversationIdentifier: conversationId,
+    serviceName: nil,
+    sender: sender,
+    attachments: nil
+  )
+
+  let interaction = INInteraction(intent: intent, response: nil)
+  interaction.direction = .incoming
+  interaction.donate(completion: nil)
+
+  // `updating(from:)` returns fresh content derived from the intent and
+  // doesn't always carry the base's sound through; re-pin it on the
+  // result so the notification doesn't fall back to silent.
+  let desiredSound: UNNotificationSound? = base.sound
+  do {
+    let updated = try base.updating(from: intent)
+    if let mutable = updated.mutableCopy() as? UNMutableNotificationContent {
+      mutable.sound = desiredSound
+      return mutable
+    }
+    return updated
+  } catch {
+    Logger.error("updating(from: intent) failed: \(error.localizedDescription)")
+    return nil
+  }
 }
 
 func scheduleToDictionary(_ schedule: NotificationSchedule) -> [String: Any] {
