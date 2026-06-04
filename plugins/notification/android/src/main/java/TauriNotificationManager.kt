@@ -24,6 +24,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
 import androidx.core.app.RemoteInput
+import androidx.core.graphics.drawable.IconCompat
 import app.tauri.Logger
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.PluginManager
@@ -100,16 +101,32 @@ class TauriNotificationManager(
     if (SDK_INT >= Build.VERSION_CODES.O) {
       val name: CharSequence = "Default"
       val description = "Default"
-      val importance = NotificationManager.IMPORTANCE_DEFAULT
+      val importance = priorityToImportance(config?.priority)
       val channel = NotificationChannel(DEFAULT_NOTIFICATION_CHANNEL_ID, name, importance)
       channel.description = description
       val audioAttributes = AudioAttributes.Builder()
         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-        .setUsage(AudioAttributes.USAGE_ALARM)
+        .setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
         .build()
       val soundUri = getDefaultSoundUrl(context)
       if (soundUri != null) {
         channel.setSound(soundUri, audioAttributes)
+      }
+      val vibrationPattern = config?.vibrationPattern
+      if (vibrationPattern != null) {
+        channel.enableVibration(true)
+        if (vibrationPattern.isNotEmpty()) {
+          channel.vibrationPattern = vibrationPattern.toLongArray()
+        }
+      }
+      val lightColor = config?.lightColor
+      if (!lightColor.isNullOrEmpty()) {
+        try {
+          channel.lightColor = Color.parseColor(lightColor)
+          channel.enableLights(true)
+        } catch (_: IllegalArgumentException) {
+          Logger.warn(Logger.tags("TauriNotification"), "Invalid lightColor '$lightColor' — expected hex (#RRGGBB).")
+        }
       }
       // Register the channel with the system; you can't change the importance
       // or other notification behaviors after this
@@ -185,7 +202,11 @@ class TauriNotificationManager(
    * Requires the consumer to use a stable id per conversation.
    */
   private fun buildMessagingStyle(notification: Notification): NotificationCompat.MessagingStyle {
-    val sender = Person.Builder().setName(notification.title ?: " ").build()
+    val senderBuilder = Person.Builder().setName(notification.title ?: " ")
+    notification.getLargeIcon(context)?.let { bitmap ->
+      senderBuilder.setIcon(IconCompat.createWithBitmap(bitmap))
+    }
+    val sender = senderBuilder.build()
     // AndroidX rejects an empty name; consumer can override by posting their
     // own MessagingStyle. Self is invisible unless we add user-sent messages.
     val selfPerson = Person.Builder().setName(" ").build()
@@ -243,7 +264,6 @@ class TauriNotificationManager(
       .setGroupSummary(notification.isGroupSummary)
     if (notification.isMessagingStyle) {
       mBuilder.setStyle(buildMessagingStyle(notification))
-      mBuilder.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
     } else if (notification.largeBody != null) {
       // support multiline text
       mBuilder.setStyle(
@@ -282,7 +302,6 @@ class TauriNotificationManager(
       }
     }
     mBuilder.setVisibility(notification.visibility ?: NotificationCompat.VISIBILITY_PRIVATE)
-    mBuilder.setOnlyAlertOnce(true)
     mBuilder.setSmallIcon(notification.getSmallIcon(context, getDefaultSmallIcon(context)))
     mBuilder.setLargeIcon(notification.getLargeIcon(context))
     val iconColor = notification.getIconColor(config?.iconColor ?: "")
@@ -530,6 +549,19 @@ class TauriNotificationManager(
     }
     defaultSmallIconID = resId
     return resId
+  }
+
+  private fun priorityToImportance(priority: String?): Int = when (priority?.lowercase()) {
+    null -> NotificationManager.IMPORTANCE_DEFAULT
+    "min" -> NotificationManager.IMPORTANCE_MIN
+    "low" -> NotificationManager.IMPORTANCE_LOW
+    "default" -> NotificationManager.IMPORTANCE_DEFAULT
+    "high" -> NotificationManager.IMPORTANCE_HIGH
+    "max" -> NotificationManager.IMPORTANCE_MAX
+    else -> {
+      Logger.warn(Logger.tags("TauriNotification"), "Unknown notification priority '$priority' — falling back to 'default'.")
+      NotificationManager.IMPORTANCE_DEFAULT
+    }
   }
 }
 

@@ -36,9 +36,29 @@ const val LOCAL_NOTIFICATIONS = "permissionState"
 
 @InvokeArg
 class PluginConfig {
-  var icon: String? = null
+  /// Default sound for notifications. "default" → system default; otherwise a
+  /// bundled resource name (Android: `res/raw/<name>`, iOS: bundle file).
+  /// Cross-platform.
   var sound: String? = null
+  /// Notification urgency. One of "min", "low", "default", "high", "max".
+  /// Cross-platform: Android maps to NotificationManager.IMPORTANCE_*; iOS
+  /// maps to UNNotificationContent.interruptionLevel (passive/active/
+  /// timeSensitive). Must be set before the Android channel is first created;
+  /// channels are immutable once registered.
+  var priority: String? = null
+  /// Android-only. Small status-bar icon resource name. No-op on iOS (always
+  /// uses the app icon).
+  var icon: String? = null
+  /// Android-only. Hex color (e.g. "#3b82f6") used as the notification accent
+  /// color. No-op on iOS (system-controlled).
   var iconColor: String? = null
+  /// Android-only. Vibration pattern in ms: [off, on, off, on, ...]. Empty list
+  /// enables vibration with the system default pattern. Unset = no vibration.
+  /// No-op on iOS (haptics are derived from the notification sound).
+  var vibrationPattern: List<Long>? = null
+  /// Android-only. Hex color (e.g. "#3b82f6") for the LED indicator on devices
+  /// that have one. No-op on iOS (no hardware).
+  var lightColor: String? = null
 }
 
 @InvokeArg

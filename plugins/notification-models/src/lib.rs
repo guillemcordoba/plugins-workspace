@@ -8,6 +8,28 @@ use serde::{de::Error as DeError, Deserialize, Deserializer, Serialize, Serializ
 
 use url::Url;
 
+/// Tauri plugin config (deserialized from `plugins.notification` in
+/// `tauri.conf.json`). All fields are optional and ignored on desktop —
+/// they configure the mobile plugin's default notification channel
+/// (Android) and per-notification interruption/sound defaults (iOS).
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Config {
+    /// Notification urgency. One of "min", "low", "default", "high", "max".
+    /// Cross-platform: Android `IMPORTANCE_*`, iOS `interruptionLevel`.
+    pub priority: Option<String>,
+    /// Default sound. "default" or a bundled resource name. Cross-platform.
+    pub sound: Option<String>,
+    /// Android-only. Small status-bar icon resource name.
+    pub icon: Option<String>,
+    /// Android-only. Notification accent color (hex).
+    pub icon_color: Option<String>,
+    /// Android-only. Vibration pattern: [off, on, off, on, ...] ms.
+    pub vibration_pattern: Option<Vec<u64>>,
+    /// Android-only. LED color (hex).
+    pub light_color: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Attachment {
@@ -165,6 +187,15 @@ pub struct NotificationData {
     pub inbox_lines: Vec<String>,
     pub icon: Option<String>,
     pub large_icon: Option<String>,
+    /// Base64-encoded image bytes (PNG/JPEG; optional `data:image/...;base64,`
+    /// prefix accepted). When set, takes precedence over `large_icon` (which
+    /// is a resource name).
+    ///
+    /// On Android, used as the MessagingStyle sender avatar (`Person.icon`)
+    /// when `messaging_style` is true, and as the regular `setLargeIcon`
+    /// otherwise. On iOS, exposed to the notification service extension and
+    /// attached as a `UNNotificationAttachment`.
+    pub large_icon_bytes: Option<String>,
     pub icon_color: Option<String>,
     #[serde(default)]
     pub attachments: Vec<Attachment>,
@@ -209,6 +240,7 @@ impl Default for NotificationData {
             inbox_lines: Vec::new(),
             icon: None,
             large_icon: None,
+            large_icon_bytes: None,
             icon_color: None,
             attachments: Vec::new(),
             extra: Default::default(),

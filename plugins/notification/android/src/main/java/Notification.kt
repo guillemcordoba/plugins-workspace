@@ -24,6 +24,10 @@ class Notification {
   var sound: String? = null
   var icon: String? = null
   var largeIcon: String? = null
+  /// Base64-encoded image bytes (PNG/JPEG). When set, takes precedence over
+  /// [largeIcon]. Used for the MessagingStyle Person avatar if
+  /// [isMessagingStyle], otherwise for the regular large icon.
+  var largeIconBytes: String? = null
   var iconColor: String? = null
   var actionTypeId: String? = null
   var group: String? = null
@@ -78,11 +82,24 @@ class Notification {
   }
 
   fun getLargeIcon(context: Context): Bitmap? {
+    largeIconBytes?.let { b64 ->
+      decodeBase64Bitmap(b64)?.let { return it }
+    }
     if (largeIcon != null) {
       val resId: Int = AssetUtils.getResourceID(context, largeIcon, "drawable")
       return BitmapFactory.decodeResource(context.resources, resId)
     }
     return null
+  }
+
+  private fun decodeBase64Bitmap(b64: String): Bitmap? {
+    val stripped = b64.substringAfter("base64,", b64)
+    return try {
+      val bytes = android.util.Base64.decode(stripped, android.util.Base64.DEFAULT)
+      BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    } catch (_: IllegalArgumentException) {
+      null
+    }
   }
 
   companion object {

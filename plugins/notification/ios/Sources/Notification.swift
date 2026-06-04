@@ -28,7 +28,7 @@ enum NotificationError: LocalizedError {
   }
 }
 
-func makeNotificationContent(_ notification: Notification) throws -> UNNotificationContent {
+func makeNotificationContent(_ notification: Notification, pluginConfig: NotificationPluginConfig?) throws -> UNNotificationContent {
   let content = UNMutableNotificationContent()
   content.title = NSString.localizedUserNotificationString(
     forKey: notification.title, arguments: nil)
@@ -36,6 +36,15 @@ func makeNotificationContent(_ notification: Notification) throws -> UNNotificat
     content.body = NSString.localizedUserNotificationString(
       forKey: body,
       arguments: nil)
+  }
+
+  if #available(iOS 15.0, *) {
+    switch pluginConfig?.priority?.lowercased() {
+    case "min", "low": content.interruptionLevel = .passive
+    case nil, "default": content.interruptionLevel = .active
+    case "high", "max": content.interruptionLevel = .timeSensitive
+    default: content.interruptionLevel = .active
+    }
   }
 
   var userInfo: [String: Any] = [:]
@@ -66,8 +75,10 @@ func makeNotificationContent(_ notification: Notification) throws -> UNNotificat
     content.summaryArgument = summaryArgument
   }
 
-  if let sound = notification.sound {
-    content.sound = UNNotificationSound(named: UNNotificationSoundName(sound))
+  if let sound = notification.sound ?? pluginConfig?.sound {
+    content.sound = sound == "default"
+      ? UNNotificationSound.default
+      : UNNotificationSound(named: UNNotificationSoundName(sound))
   }
 
   if let attachments = notification.attachments {

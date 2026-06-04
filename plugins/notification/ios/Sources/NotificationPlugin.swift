@@ -64,6 +64,16 @@ struct NotificationAttachment: Codable {
   let options: NotificationAttachmentOptions?
 }
 
+struct NotificationPluginConfig: Decodable {
+  /// Default notification sound. "default" → system default; otherwise a
+  /// bundled file name. Used when a notification does not specify its own.
+  var sound: String?
+  /// Notification urgency. One of "min", "low", "default", "high", "max".
+  /// Maps to UNNotificationContent.interruptionLevel: min/low → passive,
+  /// default → active, high/max → timeSensitive (iOS 15+).
+  var priority: String?
+}
+
 struct Notification: Decodable {
   let id: Int
   var title: String
@@ -90,12 +100,12 @@ struct RemoveActiveArgs: Decodable {
   let notifications: [RemoveActiveNotification]
 }
 
-func showNotification(invoke: Invoke, notification: Notification)
+func showNotification(invoke: Invoke, notification: Notification, pluginConfig: NotificationPluginConfig?)
   throws -> UNNotificationRequest
 {
   var content: UNNotificationContent
   do {
-    content = try makeNotificationContent(notification)
+    content = try makeNotificationContent(notification, pluginConfig: pluginConfig)
   } catch {
     throw ShowNotificationError.make(error)
   }
@@ -164,6 +174,7 @@ class NotificationPlugin: Plugin, MessagingDelegate {
   let notificationManager = NotificationManager()
   var fcmToken: String?
   var registerInvoke: Invoke?
+  var pluginConfig: NotificationPluginConfig?
 
   private static var apnsHookInstalled = false
 
@@ -176,6 +187,7 @@ class NotificationPlugin: Plugin, MessagingDelegate {
   override public func load(webview: WKWebView) {
     Messaging.messaging().delegate = self
     notificationHandler.webView = webview
+    pluginConfig = try? parseConfig(NotificationPluginConfig.self)
 
     // Install APNS hook on the live UIApplicationDelegate class as early as
     // possible — before iOS ever delivers a push token. Firebase's own
@@ -361,7 +373,7 @@ class NotificationPlugin: Plugin, MessagingDelegate {
           return
         }
         do {
-          let request = try showNotification(invoke: invoke, notification: notification)
+          let request = try showNotification(invoke: invoke, notification: notification, pluginConfig: self?.pluginConfig)
           self?.notificationHandler.saveNotification(request.identifier, notification)
           invoke.resolve(Int(request.identifier) ?? -1)
         } catch {
@@ -371,7 +383,7 @@ class NotificationPlugin: Plugin, MessagingDelegate {
       return
     }
 
-    let request = try showNotification(invoke: invoke, notification: notification)
+    let request = try showNotification(invoke: invoke, notification: notification, pluginConfig: pluginConfig)
     notificationHandler.saveNotification(request.identifier, notification)
     invoke.resolve(Int(request.identifier) ?? -1)
   }
@@ -381,7 +393,7 @@ class NotificationPlugin: Plugin, MessagingDelegate {
     var ids = [Int]()
 
     for notification in args.notifications {
-      let request = try showNotification(invoke: invoke, notification: notification)
+      let request = try showNotification(invoke: invoke, notification: notification, pluginConfig: pluginConfig)
       notificationHandler.saveNotification(request.identifier, notification)
       ids.append(Int(request.identifier) ?? -1)
     }

@@ -171,6 +171,20 @@ impl<R: Runtime> NotificationBuilder<R> {
         self
     }
 
+    /// Notification large-icon image data as a base64-encoded PNG/JPEG byte
+    /// string (may be wrapped in a `data:image/...;base64,` URL prefix).
+    /// Takes precedence over [`Self::large_icon`].
+    ///
+    /// On Android, used as the MessagingStyle sender avatar when
+    /// `messaging_style` is set, otherwise as the regular large icon.
+    /// On iOS, exposed to the notification service extension and attached
+    /// as a `UNNotificationAttachment` so the image renders in the
+    /// notification banner.
+    pub fn large_icon_bytes(mut self, large_icon_bytes: impl Into<String>) -> Self {
+        self.data.large_icon_bytes.replace(large_icon_bytes.into());
+        self
+    }
+
     /// Icon color on Android.
     pub fn icon_color(mut self, icon_color: impl Into<String>) -> Self {
         self.data.icon_color.replace(icon_color.into());
@@ -241,8 +255,8 @@ impl<R: Runtime, T: Manager<R>> crate::NotificationExt<R> for T {
 
 /// Initializes the plugin.
 #[cfg(all(mobile, feature = "push-notifications-fcm"))]
-pub fn init<R: Runtime>() -> TauriPlugin<R> {
-    Builder::new("notification")
+pub fn init<R: Runtime>() -> TauriPlugin<R, Config> {
+    Builder::<R, Config>::new("notification")
         .invoke_handler(tauri::generate_handler![
             commands::notify,
             commands::request_permission,
@@ -265,8 +279,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
 }
 
 #[cfg(not(all(mobile, feature = "push-notifications-fcm")))]
-pub fn init<R: Runtime>() -> TauriPlugin<R> {
-    Builder::new("notification")
+pub fn init<R: Runtime>() -> TauriPlugin<R, Config> {
+    Builder::<R, Config>::new("notification")
         .invoke_handler(tauri::generate_handler![
             commands::notify,
             commands::request_permission,
