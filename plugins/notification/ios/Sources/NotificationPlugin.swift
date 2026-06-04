@@ -75,6 +75,9 @@ struct ConversationStyle: Decodable {
   /// (even within a group thread) are attributed to one person. Falls
   /// back to the notification's `route` when unset.
   var senderId: String?
+  /// Group conversation name surfaced via
+  /// `INSendMessageIntent.speakableGroupName`. Unset for 1:1 chats.
+  var conversationTitle: String?
 }
 
 struct NotificationPluginConfig: Decodable {
