@@ -12,8 +12,12 @@ use url::Url;
 /// `tauri.conf.json`). All fields are optional and ignored on desktop —
 /// they configure the mobile plugin's default notification channel
 /// (Android) and per-notification interruption/sound defaults (iOS).
-#[derive(Debug, Default, Serialize, Deserialize, Clone)]
-#[serde(default, rename_all = "camelCase")]
+///
+/// Deserializes from a JSON object or from `null` / absent (treated as
+/// `Config::default()`) so apps don't have to add a stub
+/// `"notification": {}` entry to `tauri.conf.json`.
+#[derive(Debug, Default, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Config {
     /// Notification urgency. One of "min", "low", "default", "high", "max".
     /// Cross-platform: Android `IMPORTANCE_*`, iOS `interruptionLevel`.
@@ -28,6 +32,34 @@ pub struct Config {
     pub vibration_pattern: Option<Vec<u64>>,
     /// Android-only. LED color (hex).
     pub light_color: Option<String>,
+}
+
+impl<'de> Deserialize<'de> for Config {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Default, Deserialize)]
+        #[serde(default, rename_all = "camelCase")]
+        struct Inner {
+            priority: Option<String>,
+            sound: Option<String>,
+            icon: Option<String>,
+            icon_color: Option<String>,
+            vibration_pattern: Option<Vec<u64>>,
+            light_color: Option<String>,
+        }
+
+        let inner = Option::<Inner>::deserialize(deserializer)?.unwrap_or_default();
+        Ok(Config {
+            priority: inner.priority,
+            sound: inner.sound,
+            icon: inner.icon,
+            icon_color: inner.icon_color,
+            vibration_pattern: inner.vibration_pattern,
+            light_color: inner.light_color,
+        })
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
