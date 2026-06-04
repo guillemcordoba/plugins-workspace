@@ -176,7 +176,7 @@ impl<R: Runtime> NotificationBuilder<R> {
     /// Takes precedence over [`Self::large_icon`].
     ///
     /// On Android, used as the MessagingStyle sender avatar when
-    /// `messaging_style` is set, otherwise as the regular large icon.
+    /// `conversation_style` is set, otherwise as the regular large icon.
     /// On iOS, exposed to the notification service extension and attached
     /// as a `UNNotificationAttachment` so the image renders in the
     /// notification banner.
@@ -234,10 +234,15 @@ impl<R: Runtime> NotificationBuilder<R> {
         self
     }
 
-    /// Render with MessagingStyle on Android. Use a stable `id` per conversation
-    /// so messages accumulate.
-    pub fn messaging_style(mut self) -> Self {
-        self.data.messaging_style = true;
+    /// Render as part of a conversation thread (Android `MessagingStyle` /
+    /// iOS Communication Notifications). `sender_id` is a stable identifier
+    /// for the message author and feeds the Android `Person.setKey()` / iOS
+    /// `INPersonHandle.value` so successive messages from the same sender are
+    /// attributed to one person identity. Pass `None` to fall back to the
+    /// notification's `route`; supply it explicitly for group chats so
+    /// different senders don't collapse into one.
+    pub fn conversation_style(mut self, sender_id: Option<String>) -> Self {
+        self.data.conversation_style = Some(ConversationStyle { sender_id });
         self
     }
 }

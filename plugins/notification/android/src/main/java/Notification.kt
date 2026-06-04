@@ -25,8 +25,8 @@ class Notification {
   var icon: String? = null
   var largeIcon: String? = null
   /// Base64-encoded image bytes (PNG/JPEG). When set, takes precedence over
-  /// [largeIcon]. Used for the MessagingStyle Person avatar if
-  /// [isMessagingStyle], otherwise for the regular large icon.
+  /// [largeIcon]. Used for the MessagingStyle Person avatar when
+  /// [conversationStyle] is non-null, otherwise for the regular large icon.
   var largeIconBytes: String? = null
   var iconColor: String? = null
   var actionTypeId: String? = null
@@ -35,7 +35,11 @@ class Notification {
   var isGroupSummary = false
   var isOngoing = false
   var isAutoCancel = false
-  var isMessagingStyle = false
+  /// Per-conversation data needed to render this notification as a
+  /// MessagingStyle thread. When non-null, [TauriNotificationManager] renders
+  /// via `NotificationCompat.MessagingStyle` and reads `senderId` for the
+  /// `Person.setKey()` used to attribute successive messages.
+  var conversationStyle: ConversationStyle? = null
   var extra: JSObject? = null
   /// Plugin-managed: the route this notification is associated with.
   /// Used by the plugin to navigate the webview when the notification is tapped.

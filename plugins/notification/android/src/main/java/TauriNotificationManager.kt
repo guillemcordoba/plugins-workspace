@@ -140,7 +140,7 @@ class TauriNotificationManager(
   private fun trigger(notificationManager: NotificationManagerCompat, notification: Notification): Int {
     // For MessagingStyle, skip the dismiss: notify() updates in place and
     // buildMessagingStyle needs the previous notification's history.
-    if (!notification.isMessagingStyle) {
+    if (notification.conversationStyle == null) {
       dismissVisibleNotification(notification.id)
     }
     cancelTimerForNotification(notification.id)
@@ -206,6 +206,13 @@ class TauriNotificationManager(
     notification.getLargeIcon(context)?.let { bitmap ->
       senderBuilder.setIcon(IconCompat.createWithBitmap(bitmap))
     }
+    // Use a stable sender key so successive messages from the same sender —
+    // even within the same group thread — attribute to one Person identity.
+    // Falls back to the route for direct chats (where there is only one peer).
+    val senderKey = notification.conversationStyle?.senderId ?: notification.route
+    if (senderKey != null) {
+      senderBuilder.setKey(senderKey)
+    }
     val sender = senderBuilder.build()
     // AndroidX rejects an empty name; consumer can override by posting their
     // own MessagingStyle. Self is invisible unless we add user-sent messages.
@@ -262,7 +269,7 @@ class TauriNotificationManager(
       .setOngoing(notification.isOngoing)
       .setPriority(NotificationCompat.PRIORITY_DEFAULT)
       .setGroupSummary(notification.isGroupSummary)
-    if (notification.isMessagingStyle) {
+    if (notification.conversationStyle != null) {
       mBuilder.setStyle(buildMessagingStyle(notification))
     } else if (notification.largeBody != null) {
       // support multiline text

@@ -145,6 +145,15 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         }
         #[cfg(target_os = "ios")]
         #[no_mangle]
+        pub unsafe extern "C" fn notification_conversation_sender_id(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
+            let named_data = &*data;
+            match named_data.conversation_style.as_ref().and_then(|m| m.sender_id.as_ref()) {
+                Some(s) => RustByteSlice::from(s.as_ref()),
+                None => RustByteSlice::from("")
+            }
+        }
+        #[cfg(target_os = "ios")]
+        #[no_mangle]
         pub unsafe extern "C" fn receive_notification(
             notification_str: RustByteSlice,
             data_dir_str: RustByteSlice,

@@ -192,7 +192,7 @@ pub struct NotificationData {
     /// is a resource name).
     ///
     /// On Android, used as the MessagingStyle sender avatar (`Person.icon`)
-    /// when `messaging_style` is true, and as the regular `setLargeIcon`
+    /// when `conversation_style` is set, and as the regular `setLargeIcon`
     /// otherwise. On iOS, exposed to the notification service extension and
     /// attached as a `UNNotificationAttachment`.
     pub large_icon_bytes: Option<String>,
@@ -213,10 +213,34 @@ pub struct NotificationData {
     pub auto_cancel: bool,
     #[serde(default)]
     pub silent: bool,
-    /// Render with MessagingStyle on Android. Consumer must use a stable `id`
-    /// per conversation so messages accumulate. title=sender, body=text.
+    /// Render this notification as part of a conversation thread when set.
+    /// On Android this triggers `NotificationCompat.MessagingStyle` (with the
+    /// notification's `title` as the sender's display name and `body` as the
+    /// message text). On iOS it opts into Communication Notifications, which
+    /// requires the
+    /// `com.apple.developer.usernotifications.communication` entitlement and
+    /// iOS 15+. The consumer must also use a stable `id` per conversation so
+    /// successive messages accumulate into the same thread.
     #[serde(default)]
-    pub messaging_style: bool,
+    pub conversation_style: Option<ConversationStyle>,
+}
+
+/// Per-conversation data needed to render the notification as part of a
+/// messaging thread (Android `MessagingStyle` / iOS Communication
+/// Notifications). When unset on the parent `NotificationData`, both
+/// platforms render the plain "title + body" form instead.
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationStyle {
+    /// Stable identifier for the message sender (e.g. an agent/user id),
+    /// distinct from the sender's display name. Used as the Android
+    /// `Person` key and as the iOS `INPersonHandle.value`, so successive
+    /// messages from the same sender — even within the same group thread —
+    /// are attributed to one person identity. Falls back to the notification's
+    /// `route` when unset, which is correct for direct chats but collapses
+    /// different senders in groups.
+    #[serde(default)]
+    pub sender_id: Option<String>,
 }
 
 fn default_id() -> i32 {
@@ -248,7 +272,7 @@ impl Default for NotificationData {
             ongoing: false,
             auto_cancel: false,
             silent: false,
-            messaging_style: false,
+            conversation_style: None,
         }
     }
 }
