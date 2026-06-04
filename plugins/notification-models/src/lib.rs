@@ -242,6 +242,15 @@ pub struct ConversationStyle {
     /// different senders in groups.
     #[serde(default)]
     pub sender_id: Option<String>,
+    /// When set, marks the notification as a group conversation: on Android
+    /// the `MessagingStyle` calls `setConversationTitle(...)` +
+    /// `setGroupConversation(true)`, so the collapsed view shows this title
+    /// (the group name) and the expanded view stacks each sender's message
+    /// with their own display name. On iOS 15+ this is passed as the
+    /// `INSendMessageIntent.speakableGroupName`, which surfaces the group name
+    /// in Communication Notifications. Leave `None` for direct chats.
+    #[serde(default)]
+    pub conversation_title: Option<String>,
 }
 
 fn default_id() -> i32 {

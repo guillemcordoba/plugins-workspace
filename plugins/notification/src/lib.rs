@@ -235,14 +235,13 @@ impl<R: Runtime> NotificationBuilder<R> {
     }
 
     /// Render as part of a conversation thread (Android `MessagingStyle` /
-    /// iOS Communication Notifications). `sender_id` is a stable identifier
-    /// for the message author and feeds the Android `Person.setKey()` / iOS
-    /// `INPersonHandle.value` so successive messages from the same sender are
-    /// attributed to one person identity. Pass `None` to fall back to the
-    /// notification's `route`; supply it explicitly for group chats so
-    /// different senders don't collapse into one.
-    pub fn conversation_style(mut self, sender_id: Option<String>) -> Self {
-        self.data.conversation_style = Some(ConversationStyle { sender_id });
+    /// iOS Communication Notifications). See [`ConversationStyle`] for the
+    /// semantics of each field — typically `sender_id` is a stable per-author
+    /// identifier (so distinct senders in a group don't collapse into one
+    /// `Person`), and `conversation_title` is the group name for multi-party
+    /// threads (left `None` for direct chats).
+    pub fn conversation_style(mut self, style: ConversationStyle) -> Self {
+        self.data.conversation_style = Some(style);
         self
     }
 }

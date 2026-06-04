@@ -97,13 +97,15 @@ func makeNotificationContent(_ notification: Notification, pluginConfig: Notific
      let iconBytes = notification.largeIconBytes, !iconBytes.isEmpty,
      let avatarData = decodeBase64DataURL(iconBytes) {
     let senderHandle = notification.conversationStyle?.senderId?.nilIfEmpty ?? route
+    let conversationTitle = notification.conversationStyle?.conversationTitle?.nilIfEmpty
     if let updated = communicationNotificationContent(
       from: content,
       senderHandle: senderHandle,
       conversationId: route,
       displayName: notification.title,
       body: body,
-      avatarData: avatarData
+      avatarData: avatarData,
+      conversationTitle: conversationTitle
     ) {
       return updated
     }
@@ -140,7 +142,8 @@ private func communicationNotificationContent(
   conversationId: String,
   displayName: String,
   body: String,
-  avatarData: Data
+  avatarData: Data,
+  conversationTitle: String?
 ) -> UNNotificationContent? {
   let avatar = INImage(imageData: avatarData)
   let handle = INPersonHandle(value: senderHandle, type: .unknown)
@@ -153,11 +156,14 @@ private func communicationNotificationContent(
     customIdentifier: senderHandle
   )
 
+  let speakableGroupName: INSpeakableString? = conversationTitle.map {
+    INSpeakableString(spokenPhrase: $0)
+  }
   let intent = INSendMessageIntent(
     recipients: nil,
     outgoingMessageType: .outgoingMessageText,
     content: body,
-    speakableGroupName: nil,
+    speakableGroupName: speakableGroupName,
     conversationIdentifier: conversationId,
     serviceName: nil,
     sender: sender,

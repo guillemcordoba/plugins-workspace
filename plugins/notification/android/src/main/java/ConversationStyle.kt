@@ -20,4 +20,11 @@ class ConversationStyle {
   /// identity. Falls back to the notification's [Notification.route] when
   /// unset.
   var senderId: String? = null
+
+  /// Group conversation display name. When non-null, the MessagingStyle is
+  /// configured with `setConversationTitle(...)` + `setGroupConversation(true)`,
+  /// so the collapsed notification shows this title (the group name) and the
+  /// expanded view stacks each sender's row with their own display name.
+  /// Leave null for direct chats.
+  var conversationTitle: String? = null
 }

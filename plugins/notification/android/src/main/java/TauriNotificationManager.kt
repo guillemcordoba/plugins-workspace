@@ -221,6 +221,13 @@ class TauriNotificationManager(
       ?.let { NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(it) }
     val style = existing ?: NotificationCompat.MessagingStyle(selfPerson)
     style.addMessage(notification.body ?: "", System.currentTimeMillis(), sender)
+    // Group conversations: surface the group name as the collapsed-row title
+    // and tell the system to render this as a multi-party thread so each
+    // message keeps its own sender row in the expanded view.
+    notification.conversationStyle?.conversationTitle?.let { title ->
+      style.setConversationTitle(title)
+      style.isGroupConversation = true
+    }
     return style
   }
 
