@@ -43,6 +43,15 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
                 data_dir
             };
 
+            // Initialize the NDK context with this service instance as the Android Context.
+            // Required so that libraries using ndk-context (e.g. iroh's hickory-resolver) can
+            // access Android APIs when running outside the normal Tauri Activity lifecycle.
+            let _vm = env.get_java_vm().expect("failed to get JavaVM");
+            tauri_plugin_notification::ndk_context::initialize_android_context(
+                _vm.get_java_vm_pointer() as *mut ::std::os::raw::c_void,
+                class.as_raw() as *mut ::std::os::raw::c_void,
+            );
+
             let notification_data: tauri_plugin_notification::NotificationData = serde_json::from_str(notification.as_str()).expect("Can't convert notification");
             let received_notification = match main(notification_data, context) {
                 Some(n) => n,

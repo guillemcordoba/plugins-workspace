@@ -22,6 +22,11 @@ use tauri::{
 pub use tauri::plugin::PermissionState;
 pub use tauri_plugin_notification_models::*;
 
+// Re-exported so the `#[receive_push_notification]` macro-generated code can reference it
+// as `tauri_plugin_notification::ndk_context` without the user needing a direct dependency.
+#[cfg(target_os = "android")]
+pub use ndk_context;
+
 #[cfg(desktop)]
 mod desktop;
 #[cfg(mobile)]
