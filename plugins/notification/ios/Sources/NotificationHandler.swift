@@ -17,7 +17,10 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
 
   public weak var plugin: Plugin?
   public weak var webView: WKWebView? {
-    didSet { applyPendingRouteIfNeeded() }
+    didSet {
+      applyPendingRouteIfNeeded()
+      observeWebViewForClearing()
+    }
   }
 
   private var notificationsMap = [String: Notification]()
@@ -26,6 +29,19 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
   /// webview is attached and has a URL.
   private var pendingRoute: String?
   private var pendingRouteUrlObservation: NSKeyValueObservation?
+  /// Persistent KVO observer on the webview URL: when the user navigates to a
+  /// route, any delivered notification for that route is dismissed (the mirror
+  /// of the foreground banner-suppression in `willPresent`).
+  private var clearRouteUrlObservation: NSKeyValueObservation?
+  private var didBecomeActiveObserver: NSObjectProtocol?
+
+  deinit {
+    clearRouteUrlObservation?.invalidate()
+    pendingRouteUrlObservation?.invalidate()
+    if let observer = didBecomeActiveObserver {
+      NotificationCenter.default.removeObserver(observer)
+    }
+  }
 
   internal func saveNotification(_ key: String, _ notification: Notification) {
     notificationsMap.updateValue(notification, forKey: key)
@@ -133,6 +149,7 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
       let route = originalNotificationRequest.content.userInfo[NOTIFICATION_ROUTE_USER_INFO_KEY] as? String
       if let route, !route.isEmpty {
         navigateWebView(to: route)
+        clearDeliveredNotifications(forRoute: route)
       }
     }
   }
@@ -165,6 +182,57 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
     } else if pendingRouteUrlObservation == nil {
       pendingRouteUrlObservation = webView.observe(\.url, options: .new) { [weak self] _, _ in
         DispatchQueue.main.async { self?.applyPendingRouteIfNeeded() }
+      }
+    }
+  }
+
+  /// Watch the webview URL and the app becoming active so notifications for the
+  /// route the user is now viewing get dismissed. WKWebView updates `url` on
+  /// History-API navigations (the SPA router's pushState/replaceState/popstate),
+  /// so this fires on in-app route changes too.
+  private func observeWebViewForClearing() {
+    clearRouteUrlObservation?.invalidate()
+    clearRouteUrlObservation = nil
+    guard let webView = self.webView else { return }
+
+    clearRouteUrlObservation = webView.observe(\.url, options: [.new]) { [weak self] _, _ in
+      self?.clearNotificationsForCurrentRoute()
+    }
+
+    if didBecomeActiveObserver == nil {
+      didBecomeActiveObserver = NotificationCenter.default.addObserver(
+        forName: UIApplication.didBecomeActiveNotification,
+        object: nil,
+        queue: .main
+      ) { [weak self] _ in
+        self?.clearNotificationsForCurrentRoute()
+      }
+    }
+  }
+
+  /// Dismiss every delivered notification whose route matches the path the
+  /// webview is currently showing.
+  func clearNotificationsForCurrentRoute() {
+    DispatchQueue.main.async { [weak self] in
+      guard let webView = self?.webView else { return }
+      webView.evaluateJavaScript("window.location.pathname") { result, _ in
+        if let path = result as? String, !path.isEmpty {
+          self?.clearDeliveredNotifications(forRoute: path)
+        }
+      }
+    }
+  }
+
+  func clearDeliveredNotifications(forRoute route: String) {
+    let center = UNUserNotificationCenter.current()
+    center.getDeliveredNotifications { delivered in
+      let ids = delivered
+        .filter {
+          ($0.request.content.userInfo[NOTIFICATION_ROUTE_USER_INFO_KEY] as? String) == route
+        }
+        .map { $0.request.identifier }
+      if !ids.isEmpty {
+        center.removeDeliveredNotifications(withIdentifiers: ids)
       }
     }
   }

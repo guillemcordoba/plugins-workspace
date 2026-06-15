@@ -12,7 +12,10 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import app.tauri.PermissionState
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -33,6 +36,28 @@ import com.google.firebase.FirebaseOptions
 import com.google.firebase.installations.FirebaseInstallations
 
 const val LOCAL_NOTIFICATIONS = "permissionState"
+
+/// Extra key carrying the route a delivered notification is associated with,
+/// so it can be matched and dismissed when the user navigates to that route.
+const val NOTIFICATION_ROUTE_EXTRA = "tauri_notification_route"
+
+/// Injected into the webview so SPA (History-API) navigations notify native,
+/// which then dismisses any delivered notification for the new route.
+private const val ROUTE_CHANGE_HOOK_JS = """
+(function () {
+  if (window.__tauriNotifClearInstalled) return;
+  window.__tauriNotifClearInstalled = true;
+  function notify() {
+    try { AndroidNotifClear.routeChanged(window.location.pathname); } catch (e) {}
+  }
+  var _push = history.pushState;
+  history.pushState = function () { var r = _push.apply(this, arguments); notify(); return r; };
+  var _replace = history.replaceState;
+  history.replaceState = function () { var r = _replace.apply(this, arguments); notify(); return r; };
+  window.addEventListener('popstate', notify);
+  notify();
+})();
+"""
 
 @InvokeArg
 class PluginConfig {
@@ -185,6 +210,11 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
           Lifecycle.Event.ON_RESUME -> {
             isForeground = true
             Log.i("NotificationPlugin", "lifecycle ON_RESUME: isForeground=true")
+            // The user may have come to the foreground while sitting on a chat
+            // (e.g. a push arrived). Clear notifications for whatever route is
+            // currently shown. The navigation hook is a document-start script,
+            // so it re-installs itself on every load — no need to re-inject here.
+            clearNotificationsForCurrentRoute()
           }
           Lifecycle.Event.ON_PAUSE -> {
             isForeground = false
@@ -212,6 +242,16 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
     this.manager = manager
     
     notificationManager = activity.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    // Bridge for the injected navigation hook (additive — doesn't disturb
+    // Tauri's own IPC) plus the hook itself, so SPA navigations dismiss any
+    // delivered notification for the route the user just opened. Registered
+    // after `manager`/`notificationManager` are initialized, since the hook can
+    // fire `clearNotificationsForRoute` immediately.
+    activity.runOnUiThread {
+      webView.addJavascriptInterface(NotificationRouteBridge(), "AndroidNotifClear")
+    }
+    installRouteChangeHook()
 
     // This may be replaced at compile time by build.rs
     var API_KEY = "<API_KEY>"
@@ -253,6 +293,7 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
         val route = notification?.getString("route", null)
         if (!route.isNullOrEmpty()) {
           navigateWebView(route)
+          clearNotificationsForRoute(route)
         }
       }
     }
@@ -287,6 +328,77 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
       }
       view.loadUrl(newUrl)
       pendingRoute = null
+    }
+  }
+
+  /// Receives route changes from the injected JS hook (ROUTE_CHANGE_HOOK_JS).
+  /// Runs on the WebView JS-bridge thread.
+  inner class NotificationRouteBridge {
+    @JavascriptInterface
+    fun routeChanged(path: String) {
+      if (path.isNotEmpty()) clearNotificationsForRoute(path)
+    }
+  }
+
+  /// Install the SPA navigation hook so it runs at the start of every document
+  /// load. `addDocumentStartJavaScript` guarantees the hook lands in the real
+  /// app document (not the initial `about:blank`), which a one-shot
+  /// `evaluateJavascript` races against the document swap. Falls back to the
+  /// retry-based injection on the rare devices without DOCUMENT_START_SCRIPT.
+  private fun installRouteChangeHook() {
+    val view = webView ?: return
+    activity.runOnUiThread {
+      if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+        try {
+          WebViewCompat.addDocumentStartJavaScript(view, ROUTE_CHANGE_HOOK_JS, setOf("*"))
+        } catch (e: Exception) {
+          Log.e("NotificationPlugin", "addDocumentStartJavaScript failed, falling back", e)
+          injectRouteChangeHook()
+        }
+      } else {
+        injectRouteChangeHook()
+      }
+    }
+  }
+
+  /// Fallback hook injection: retries until the webview has a URL (page loaded);
+  /// the hook itself is idempotent via a window flag.
+  private fun injectRouteChangeHook(remainingRetries: Int = 50) {
+    val view = webView ?: return
+    activity.runOnUiThread {
+      if (view.url.isNullOrEmpty()) {
+        if (remainingRetries > 0) {
+          view.postDelayed({ injectRouteChangeHook(remainingRetries - 1) }, 100)
+        }
+        return@runOnUiThread
+      }
+      view.evaluateJavascript(ROUTE_CHANGE_HOOK_JS, null)
+    }
+  }
+
+  private fun clearNotificationsForCurrentRoute() {
+    val view = webView ?: return
+    activity.runOnUiThread {
+      view.evaluateJavascript("window.location.pathname") { jsResult ->
+        val path = jsResult?.removeSurrounding("\"")
+        if (!path.isNullOrEmpty() && path != "null") clearNotificationsForRoute(path)
+      }
+    }
+  }
+
+  /// Dismiss every delivered notification whose stored route matches `route`,
+  /// then drop any now-childless group summaries.
+  fun clearNotificationsForRoute(route: String) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+    val matched = notificationManager.activeNotifications.filter {
+      it.notification?.extras?.getString(NOTIFICATION_ROUTE_EXTRA) == route
+    }
+    if (matched.isEmpty()) return
+    val ids = matched.map { it.id }
+    val groups = matched.mapNotNull { it.notification?.group }.toSet()
+    activity.runOnUiThread {
+      manager.cancel(ids)
+      groups.forEach { manager.refreshGroupSummary(it) }
     }
   }
 

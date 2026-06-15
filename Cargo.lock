@@ -6904,6 +6904,7 @@ dependencies = [
  "ctor",
  "log",
  "maplit",
+ "ndk-context",
  "notify-rust",
  "rand 0.9.1",
  "regex",

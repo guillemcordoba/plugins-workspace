@@ -19,6 +19,7 @@ import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
+import android.os.Bundle
 import android.os.UserManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -185,7 +186,7 @@ class TauriNotificationManager(
     notificationManager.notify(group.hashCode(), builder.build())
   }
 
-  private fun refreshGroupSummary(group: String) {
+  fun refreshGroupSummary(group: String) {
     val summaryId = group.hashCode()
     val sys = context.getSystemService(NotificationManager::class.java) ?: return
     val hasChildren = sys.activeNotifications.any { sbn ->
@@ -325,6 +326,12 @@ class TauriNotificationManager(
       } catch (ex: IllegalArgumentException) {
         throw Exception("Invalid color provided. Must be a hex string (ex: #ff0000")
       }
+    }
+    // Carry the route on the delivered notification so it can be matched and
+    // dismissed when the user navigates to that route (see
+    // NotificationPlugin.clearNotificationsForRoute).
+    notification.route?.let {
+      mBuilder.addExtras(Bundle().apply { putString(NOTIFICATION_ROUTE_EXTRA, it) })
     }
     createActionIntents(notification, mBuilder)
     // notificationId is a unique int for each notification that you must define
