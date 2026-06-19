@@ -89,6 +89,21 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
     let notificationData = toActiveNotification(notification.request)
     try? self.plugin?.trigger("notification", data: notificationData)
 
+    // TODO(remove once the notification-filtering entitlement is granted):
+    // Drop the foreground banner for remote (APNs/NSE) pushes. The NSE is
+    // currently forced to deliver a banner for every push because it lacks
+    // `com.apple.developer.usernotifications.filtering`. While the app is
+    // foregrounded the main app already posts its own local notification for
+    // the same message (sync pipeline), so the NSE banner is a duplicate.
+    // willPresent only fires in the foreground, so suppressing push-triggered
+    // notifications here removes the dupe without touching background pushes.
+    // When the entitlement lands the NSE can suppress itself and this whole
+    // block should be deleted.
+    if notification.request.trigger is UNPushNotificationTrigger {
+      completionHandler([])
+      return
+    }
+
     if let options = notificationsMap[notification.request.identifier] {
       if options.silent ?? false {
         completionHandler([])
