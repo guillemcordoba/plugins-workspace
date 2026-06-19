@@ -127,6 +127,12 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         }
         #[cfg(target_os = "ios")]
         #[no_mangle]
+        pub unsafe extern "C" fn notification_id(data: *const ::tauri_plugin_notification::NotificationData) -> i32 {
+            let named_data = &*data;
+            named_data.id
+        }
+        #[cfg(target_os = "ios")]
+        #[no_mangle]
         pub unsafe extern "C" fn notification_route(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
             let named_data = &*data;
             match &named_data.route {
