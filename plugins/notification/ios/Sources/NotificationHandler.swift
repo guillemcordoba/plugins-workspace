@@ -19,6 +19,13 @@ private let NOTIFICATION_ROUTE_USER_INFO_KEY = "__notification_route__"
 /// push and the local notification for the same message (only one can present).
 private let NOTIFICATION_DEDUP_ID_USER_INFO_KEY = "__notification_dedup_id__"
 
+/// userInfo key carrying the NSE's delivery outcome for a push: `"delivered"`
+/// when the extension decoded real content, `"fallback"` for its generic
+/// placeholder, and absent when iOS killed the extension for exceeding its
+/// time/memory budget and delivered the raw APNS payload instead.
+/// `willPresent` uses it to drop degraded/raw pushes while the app is foregrounded.
+private let NSE_CONTENT_STATUS_USER_INFO_KEY = "__nse_content_status__"
+
 /// How long a presented stable id is remembered for dedup. The push and the
 /// local notification for one message arrive within seconds of each other in the
 /// foreground; cross-process/temporal dedup is handled in Rust, so this only
@@ -105,6 +112,20 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
   ) {
     let notificationData = toActiveNotification(notification.request)
     try? self.plugin?.trigger("notification", data: notificationData)
+
+    // Every push reaching `willPresent` (foreground only) carries the NSE's
+    // delivery outcome. `"delivered"` means the extension decoded real content;
+    // anything else — its generic `"fallback"`, or the key being absent because
+    // iOS killed the extension for exceeding its budget and delivered the raw
+    // APNS payload — is not user-meaningful. Drop those
+    // in the foreground; the sync path shows a proper notification for the op.
+    // Local sync notifications aren't push triggers, so they're unaffected.
+    if notification.request.trigger is UNPushNotificationTrigger,
+      (notification.request.content.userInfo[NSE_CONTENT_STATUS_USER_INFO_KEY] as? String) != "delivered"
+    {
+      completionHandler([])
+      return
+    }
 
     // Dedup the NSE push and the local (sync-path) notification for the same
     // message. Both reach willPresent in the foreground carrying the same stable
