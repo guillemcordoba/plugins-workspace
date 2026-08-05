@@ -13,24 +13,12 @@ import WebKit
 /// to navigate the webview to it when the notification is tapped.
 private let NOTIFICATION_ROUTE_USER_INFO_KEY = "__notification_route__"
 
-/// userInfo key carrying a stable per-message id (the op-hash notification id).
-/// Set by the NSE on push content; local (sync-path) notifications carry the
-/// same value as their request identifier. `willPresent` uses it to dedup the
-/// push and the local notification for the same message (only one can present).
-private let NOTIFICATION_DEDUP_ID_USER_INFO_KEY = "__notification_dedup_id__"
-
 /// userInfo key carrying the NSE's delivery outcome for a push: `"delivered"`
 /// when the extension decoded real content, `"fallback"` for its generic
 /// placeholder, and absent when iOS killed the extension for exceeding its
 /// time/memory budget and delivered the raw APNS payload instead.
 /// `willPresent` uses it to drop degraded/raw pushes while the app is foregrounded.
 private let NSE_CONTENT_STATUS_USER_INFO_KEY = "__nse_content_status__"
-
-/// How long a presented stable id is remembered for dedup. The push and the
-/// local notification for one message arrive within seconds of each other in the
-/// foreground; cross-process/temporal dedup is handled in Rust, so this only
-/// needs to bridge that short gap (with generous margin for push latency).
-private let NOTIFICATION_DEDUP_TTL: TimeInterval = 120
 
 public class NotificationHandler: NSObject, NotificationHandlerProtocol {
 
@@ -43,11 +31,6 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
   }
 
   private var notificationsMap = [String: Notification]()
-  /// Stable ids of notifications recently presented in the foreground, keyed by
-  /// id → presentation time. Used to drop the duplicate when both the NSE push
-  /// and the local (sync-path) notification for the same message reach
-  /// `willPresent`. Entries older than `NOTIFICATION_DEDUP_TTL` are pruned.
-  private var recentlyPresentedIds = [String: Date]()
   /// Route requested by a tap before the webview was ready (app launched by
   /// tapping a notification from terminated state). Applied as soon as the
   /// webview is attached and has a URL.
@@ -126,32 +109,6 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
       completionHandler([])
       return
     }
-
-    // Dedup the NSE push and the local (sync-path) notification for the same
-    // message. Both reach willPresent in the foreground carrying the same stable
-    // id — the push in userInfo, the local as its request identifier — so the
-    // first to present wins and the twin is dropped. Without the
-    // `com.apple.developer.usernotifications.filtering` entitlement the NSE is
-    // forced to deliver a banner for every push; this is where that duplicate is
-    // removed. Cross-process/temporal dedup is handled separately in Rust.
-    //
-    // TODO(usernotifications.filtering entitlement): once Apple grants
-    // `com.apple.developer.usernotifications.filtering`, the NSE can suppress its
-    // own push when the main app already posted the local notification, so there
-    // is no foreground duplicate to drop. Delete this dedup block (and the
-    // `recentlyPresentedIds` state + `__notification_dedup_id__` plumbing) then.
-    let dedupId =
-      (notification.request.content.userInfo[NOTIFICATION_DEDUP_ID_USER_INFO_KEY] as? String)
-      ?? notification.request.identifier
-    let now = Date()
-    recentlyPresentedIds = recentlyPresentedIds.filter {
-      now.timeIntervalSince($0.value) < NOTIFICATION_DEDUP_TTL
-    }
-    if recentlyPresentedIds[dedupId] != nil {
-      completionHandler([])
-      return
-    }
-    recentlyPresentedIds[dedupId] = now
 
     if let options = notificationsMap[notification.request.identifier] {
       if options.silent ?? false {
