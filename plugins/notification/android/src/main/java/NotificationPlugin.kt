@@ -387,18 +387,17 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   }
 
   /// Dismiss every delivered notification whose stored route matches `route`,
-  /// then drop any now-childless group summaries.
+  /// then drop any now-childless group summaries. The sweep runs even when
+  /// nothing matched: a summary orphaned earlier carries no route extra, so it
+  /// can never be in `matched` and this is its only chance to be collected.
   fun clearNotificationsForRoute(route: String) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
-    val matched = notificationManager.activeNotifications.filter {
+    val ids = notificationManager.activeNotifications.filter {
       it.notification?.extras?.getString(NOTIFICATION_ROUTE_EXTRA) == route
-    }
-    if (matched.isEmpty()) return
-    val ids = matched.map { it.id }
-    val groups = matched.mapNotNull { it.notification?.group }.toSet()
+    }.map { it.id }
     activity.runOnUiThread {
       manager.cancel(ids)
-      groups.forEach { manager.refreshGroupSummary(it) }
+      sweepChildlessSummaries(activity, ids.toSet())
     }
   }
 

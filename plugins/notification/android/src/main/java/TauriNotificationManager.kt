@@ -87,9 +87,7 @@ class TauriNotificationManager(
     } catch (_: JSONException) {
     }
     dataJson.put("notification", request)
-    // When the last child of a group is dismissed by tap, cancel the lingering
-    // summary so the bundle doesn't stay in the tray empty.
-    request?.optString("group")?.takeIf { it.isNotEmpty() }?.let { refreshGroupSummary(it) }
+    sweepChildlessSummaries(context, setOf(notificationId))
     return dataJson
   }
 
@@ -184,17 +182,6 @@ class TauriNotificationManager(
       }
     }
     notificationManager.notify(group.hashCode(), builder.build())
-  }
-
-  fun refreshGroupSummary(group: String) {
-    val summaryId = group.hashCode()
-    val sys = context.getSystemService(NotificationManager::class.java) ?: return
-    val hasChildren = sys.activeNotifications.any { sbn ->
-      sbn.id != summaryId && sbn.notification.group == group
-    }
-    if (!hasChildren) {
-      NotificationManagerCompat.from(context).cancel(summaryId)
-    }
   }
 
   /**
@@ -586,6 +573,30 @@ class TauriNotificationManager(
   }
 }
 
+/**
+ * Cancel every group summary posted by `maybePostGroupSummary` that no longer
+ * has children, so a bundle whose last child is gone doesn't linger in the tray
+ * as a contentless entry. `dismissedIds` are notifications whose cancellation
+ * has already been requested: the system applies cancellations asynchronously,
+ * so they can still be listed as active here.
+ */
+fun sweepChildlessSummaries(context: Context, dismissedIds: Set<Int> = emptySet()) {
+  if (SDK_INT < Build.VERSION_CODES.M) return
+  val sys = context.getSystemService(NotificationManager::class.java) ?: return
+  val active = sys.activeNotifications.filter { it.id !in dismissedIds }
+  val notificationManager = NotificationManagerCompat.from(context)
+  // Identify summaries by the id `maybePostGroupSummary` derives from the group
+  // rather than by FLAG_GROUP_SUMMARY: the system strips that flag once it
+  // re-bundles a childless summary into its own auto-group.
+  for (summary in active.filter { it.id == it.notification.group?.hashCode() }) {
+    val group = summary.notification.group
+    val hasChildren = active.any { it.id != summary.id && it.notification.group == group }
+    if (!hasChildren) {
+      notificationManager.cancel(summary.id)
+    }
+  }
+}
+
 class NotificationDismissReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     val intExtra =
@@ -600,6 +611,7 @@ class NotificationDismissReceiver : BroadcastReceiver() {
       val notificationStorage = NotificationStorage(context, ObjectMapper())
       notificationStorage.deleteNotification(intExtra.toString())
     }
+    sweepChildlessSummaries(context, setOf(intExtra))
   }
 }
 
