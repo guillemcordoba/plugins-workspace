@@ -9,7 +9,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.util.Log
 import android.webkit.JavascriptInterface
@@ -40,6 +39,11 @@ const val LOCAL_NOTIFICATIONS = "permissionState"
 /// Extra key carrying the route a delivered notification is associated with,
 /// so it can be matched and dismissed when the user navigates to that route.
 const val NOTIFICATION_ROUTE_EXTRA = "tauri_notification_route"
+
+/// How long a persisted tap stays consumable. A tap that never got drained
+/// (e.g. a crash between the trampoline and plugin load) must not replay a
+/// navigation on some much later launch.
+const val PENDING_TAP_MAX_AGE_MS = 60_000L
 
 /// Injected into the webview so SPA (History-API) navigations notify native,
 /// which then dismisses any delivered notification for the new route.
@@ -210,6 +214,12 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
           Lifecycle.Event.ON_RESUME -> {
             isForeground = true
             Log.i("NotificationPlugin", "lifecycle ON_RESUME: isForeground=true")
+            // A tap on a notification while the app process was already alive
+            // resumes the (existing) activity rather than re-running load().
+            drainPendingTap()
+            // A route whose apply-retries ran out (webview slow to get a URL
+            // on a cold start) gets another chance whenever we come back.
+            applyPendingRouteIfNeeded()
             // The user may have come to the foreground while sitting on a chat
             // (e.g. a push arrived). Clear notifications for whatever route is
             // currently shown. The navigation hook is a document-start script,
@@ -234,7 +244,6 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
     
     val manager = TauriNotificationManager(
       notificationStorage,
-      activity,
       activity,
       getConfig(PluginConfig::class.java)
     )
@@ -266,35 +275,29 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
       FirebaseApp.initializeApp(activity, options)
     }
 
-    val intent = activity.intent
-    intent?.let {
-      onIntent(it)
-    }
+    // A tap that cold-started the app was persisted by NotificationTapActivity
+    // before this plugin existed — act on it now.
+    drainPendingTap()
   }
 
-  override fun onNewIntent(intent: Intent) {
-    super.onNewIntent(intent)
-    onIntent(intent)
-  }
+  /// Consume a tap persisted by [NotificationTapActivity] and act on it:
+  /// notify JS listeners, navigate the webview to the notification's route
+  /// (taps only — dismiss actions shouldn't navigate), and clean up the tapped
+  /// notification. Called from `load()` (tap cold-started the app) and from
+  /// the ON_RESUME observer (tap while the app process was already alive).
+  private fun drainPendingTap() {
+    if (!::manager.isInitialized) return
+    val tap = PendingTapStore(activity).consume(PENDING_TAP_MAX_AGE_MS) ?: return
+    Log.i("NotificationPlugin", "drainPendingTap: id=${tap.notificationId}, actionId=${tap.actionId}")
+    val dataJson = manager.handleNotificationActionPerformed(tap, notificationStorage)
+    trigger("actionPerformed", dataJson)
 
-  fun onIntent(intent: Intent) {
-    if (Intent.ACTION_MAIN != intent.action) {
-      return
-    }
-    val dataJson = manager.handleNotificationActionPerformed(intent, notificationStorage)
-    if (dataJson != null) {
-      trigger("actionPerformed", dataJson)
-
-      // Navigate the webview to the route this notification carries (taps only —
-      // dismiss shouldn't navigate).
-      val actionId = dataJson.getString("actionId", null)
-      if (actionId == "tap") {
-        val notification = dataJson.getJSObject("notification")
-        val route = notification?.getString("route", null)
-        if (!route.isNullOrEmpty()) {
-          navigateWebView(route)
-          clearNotificationsForRoute(route)
-        }
+    if (tap.actionId == DEFAULT_PRESS_ACTION) {
+      val notification = dataJson.getJSObject("notification")
+      val route = notification?.getString("route", null)
+      if (!route.isNullOrEmpty()) {
+        navigateWebView(route)
+        clearNotificationsForRoute(route)
       }
     }
   }

@@ -5,7 +5,6 @@
 package app.tauri.notification
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -46,7 +45,6 @@ const val DEFAULT_PRESS_ACTION = "tap"
 
 class TauriNotificationManager(
   private val storage: NotificationStorage,
-  private val activity: Activity?,
   private val context: Context,
   private val config: PluginConfig?
 ) {
@@ -54,40 +52,26 @@ class TauriNotificationManager(
   private var defaultSmallIconID: Int = AssetUtils.RESOURCE_ID_ZERO_VALUE
 
   fun handleNotificationActionPerformed(
-    data: Intent,
+    tap: PendingTap,
     notificationStorage: NotificationStorage
-  ): JSObject? {
-    Logger.debug(Logger.tags("Notification"), "Notification received: " + data.dataString)
-    val notificationId =
-      data.getIntExtra(NOTIFICATION_INTENT_KEY, Int.MIN_VALUE)
-    if (notificationId == Int.MIN_VALUE) {
-      Logger.debug(Logger.tags("Notification"), "Activity started without notification attached")
-      return null
-    }
-    val isRemovable =
-      data.getBooleanExtra(NOTIFICATION_IS_REMOVABLE_KEY, true)
-    if (isRemovable) {
-      notificationStorage.deleteNotification(notificationId.toString())
+  ): JSObject {
+    if (tap.isRemovable) {
+      notificationStorage.deleteNotification(tap.notificationId.toString())
     }
     val dataJson = JSObject()
-    val results = RemoteInput.getResultsFromIntent(data)
-    val input = results?.getCharSequence(REMOTE_INPUT_KEY)
-    dataJson.put("inputValue", input?.toString())
-    val menuAction = data.getStringExtra(ACTION_INTENT_KEY)
-    dismissVisibleNotification(notificationId)
-    dataJson.put("notificationId", notificationId)
-    dataJson.put("actionId", menuAction)
+    dataJson.put("inputValue", tap.inputValue)
+    dismissVisibleNotification(tap.notificationId)
+    dataJson.put("notificationId", tap.notificationId)
+    dataJson.put("actionId", tap.actionId)
     var request: JSONObject? = null
     try {
-      val notificationJsonString =
-        data.getStringExtra(NOTIFICATION_OBJ_INTENT_KEY)
-      if (notificationJsonString != null) {
-        request = JSObject(notificationJsonString)
+      if (tap.sourceJson != null) {
+        request = JSObject(tap.sourceJson)
       }
     } catch (_: JSONException) {
     }
     dataJson.put("notification", request)
-    sweepChildlessSummaries(context, setOf(notificationId))
+    sweepChildlessSummaries(context, setOf(tap.notificationId))
     return dataJson
   }
 
@@ -398,16 +382,14 @@ class TauriNotificationManager(
     mBuilder.setDeleteIntent(deleteIntent)
   }
 
+  // Taps go through the NotificationTapActivity trampoline rather than
+  // straight to the app's main activity: an intent delivered to the main
+  // activity is lost when it arrives before the plugin is registered (cold
+  // start) and replayed when the task's creation intent goes stale — see
+  // NotificationTapActivity.
   private fun buildIntent(notification: Notification, action: String?): Intent {
-    val intent = if (activity != null) {
-      Intent(context, activity.javaClass)
-    } else {
-      val packageName = context.packageName
-      context.packageManager.getLaunchIntentForPackage(packageName)!!
-    }
-    intent.action = Intent.ACTION_MAIN
-    intent.addCategory(Intent.CATEGORY_LAUNCHER)
-    intent.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    val intent = Intent(context, NotificationTapActivity::class.java)
+    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
     intent.putExtra(NOTIFICATION_INTENT_KEY, notification.id)
     intent.putExtra(ACTION_INTENT_KEY, action)
     intent.putExtra(NOTIFICATION_OBJ_INTENT_KEY, notification.sourceJson)
@@ -724,7 +706,7 @@ class LocalNotificationRestoreReceiver : BroadcastReceiver() {
     } catch (ex: Exception) {
       ex.printStackTrace()
     }
-    val notificationManager = TauriNotificationManager(storage, null, context, config)
+    val notificationManager = TauriNotificationManager(storage, context, config)
     notificationManager.schedule(notifications)
   }
 }

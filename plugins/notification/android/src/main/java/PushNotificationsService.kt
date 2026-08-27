@@ -46,7 +46,6 @@ class PushNotificationsService(): FirebaseMessagingService()  {
         val notificationStorage = NotificationStorage(this, jsonMapper())
         val manager = TauriNotificationManager(
           notificationStorage,
-		  null,
           this,
           null
         )
