@@ -141,10 +141,6 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   private lateinit var notificationStorage: NotificationStorage
   private var channelManager = ChannelManager(activity)
   private var fcmToken: String? = null
-  /// Route requested by a tap before the webview was ready (app launched by
-  /// tapping a notification from terminated state). Applied once the webview
-  /// is attached and its URL has been set.
-  private var pendingRoute: String? = null
   /// Tracks whether the activity is currently in the foreground. Mirrors the
   /// iOS `willPresent` semantics: route-suppression only applies while the
   /// app is foregrounded; backgrounded notifications are always shown.
@@ -217,9 +213,6 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
             // A tap on a notification while the app process was already alive
             // resumes the (existing) activity rather than re-running load().
             drainPendingTap()
-            // A route whose apply-retries ran out (webview slow to get a URL
-            // on a cold start) gets another chance whenever we come back.
-            applyPendingRouteIfNeeded()
             // The user may have come to the foreground while sitting on a chat
             // (e.g. a push arrived). Clear notifications for whatever route is
             // currently shown. The navigation hook is a document-start script,
@@ -237,9 +230,6 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
 
     super.load(webView)
     this.webView = webView
-    // If a tap arrived before the webview was attached, apply it now that the
-    // webview is available.
-    applyPendingRouteIfNeeded()
     notificationStorage = NotificationStorage(activity, jsonMapper())
     
     val manager = TauriNotificationManager(
@@ -281,10 +271,11 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
   }
 
   /// Consume a tap persisted by [NotificationTapActivity] and act on it:
-  /// notify JS listeners, navigate the webview to the notification's route
-  /// (taps only — dismiss actions shouldn't navigate), and clean up the tapped
-  /// notification. Called from `load()` (tap cold-started the app) and from
-  /// the ON_RESUME observer (tap while the app process was already alive).
+  /// notify listeners, and clean up the tapped notification and the others
+  /// for its route. Navigating to the route is left to the app, which gets it
+  /// in the `actionPerformed` payload — reloading the webview here would tear
+  /// down the running app. Called from `load()` (tap cold-started the app) and
+  /// from the ON_RESUME observer (tap while the app process was already alive).
   private fun drainPendingTap() {
     if (!::manager.isInitialized) return
     val tap = PendingTapStore(activity).consume(PENDING_TAP_MAX_AGE_MS) ?: return
@@ -296,41 +287,8 @@ class NotificationPlugin(private val activity: Activity): Plugin(activity) {
       val notification = dataJson.getJSObject("notification")
       val route = notification?.getString("route", null)
       if (!route.isNullOrEmpty()) {
-        navigateWebView(route)
         clearNotificationsForRoute(route)
       }
-    }
-  }
-
-  private fun navigateWebView(route: String) {
-    pendingRoute = route
-    applyPendingRouteIfNeeded()
-  }
-
-  /// Apply a pending tap-route to the webview if both are ready. If the
-  /// webview is attached but its URL is still null (the initial page hasn't
-  /// begun loading yet — typical when the app was launched by tapping a
-  /// notification from terminated state), retry on a short delay until it
-  /// becomes available.
-  private fun applyPendingRouteIfNeeded(remainingRetries: Int = 50) {
-    val route = pendingRoute ?: return
-    val view = webView ?: return
-    activity.runOnUiThread {
-      val current = view.url
-      if (current.isNullOrEmpty()) {
-        if (remainingRetries > 0) {
-          view.postDelayed({ applyPendingRouteIfNeeded(remainingRetries - 1) }, 100)
-        }
-        return@runOnUiThread
-      }
-      val newUrl = try {
-        android.net.Uri.parse(current).buildUpon().path(route).build().toString()
-      } catch (_: Exception) {
-        pendingRoute = null
-        return@runOnUiThread
-      }
-      view.loadUrl(newUrl)
-      pendingRoute = null
     }
   }
 

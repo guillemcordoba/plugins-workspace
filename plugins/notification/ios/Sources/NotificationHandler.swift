@@ -10,7 +10,7 @@ import WebKit
 /// userInfo key carrying the route a notification is associated with.
 /// Set by the NSE from `NotificationData.route` (Rust). The plugin uses it to
 /// suppress the foreground banner when the user is already on that route, and
-/// to navigate the webview to it when the notification is tapped.
+/// hands it to the app in the tap's `actionPerformed` payload.
 private let NOTIFICATION_ROUTE_USER_INFO_KEY = "__notification_route__"
 
 /// userInfo key carrying the NSE's delivery outcome for a push: `"delivered"`
@@ -25,17 +25,11 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
   public weak var plugin: Plugin?
   public weak var webView: WKWebView? {
     didSet {
-      applyPendingRouteIfNeeded()
       observeWebViewForClearing()
     }
   }
 
   private var notificationsMap = [String: Notification]()
-  /// Route requested by a tap before the webview was ready (app launched by
-  /// tapping a notification from terminated state). Applied as soon as the
-  /// webview is attached and has a URL.
-  private var pendingRoute: String?
-  private var pendingRouteUrlObservation: NSKeyValueObservation?
   /// Persistent KVO observer on the webview URL: when the user navigates to a
   /// route, any delivered notification for that route is dismissed (the mirror
   /// of the foreground banner-suppression in `willPresent`).
@@ -44,7 +38,6 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
 
   deinit {
     clearRouteUrlObservation?.invalidate()
-    pendingRouteUrlObservation?.invalidate()
     if let observer = didBecomeActiveObserver {
       NotificationCenter.default.removeObserver(observer)
     }
@@ -164,45 +157,13 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
         notification: toActiveNotification(originalNotificationRequest)
     ))
 
-    // Navigate the webview to the route this notification carries (taps only —
-    // dismiss shouldn't navigate).
+    // Navigating to the route is left to the app, which gets it in the
+    // `actionPerformed` payload: reloading the webview here would tear down
+    // the running app.
     if actionIdValue == "tap" {
       let route = originalNotificationRequest.content.userInfo[NOTIFICATION_ROUTE_USER_INFO_KEY] as? String
       if let route, !route.isEmpty {
-        navigateWebView(to: route)
         clearDeliveredNotifications(forRoute: route)
-      }
-    }
-  }
-
-  private func navigateWebView(to route: String) {
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self else { return }
-      self.pendingRoute = route
-      self.applyPendingRouteIfNeeded()
-    }
-  }
-
-  /// Apply a pending tap-route to the webview if both are ready. If the webview
-  /// is attached but its URL is still nil (the initial page hasn't begun
-  /// loading yet — typical when the app was launched by tapping a notification
-  /// from terminated state), install a one-shot KVO observer on `url` and
-  /// re-run when it becomes available.
-  private func applyPendingRouteIfNeeded() {
-    guard let route = pendingRoute else { return }
-    guard let webView = self.webView else { return }
-    if let currentURL = webView.url,
-       var components = URLComponents(url: currentURL, resolvingAgainstBaseURL: false) {
-      components.path = route
-      if let newURL = components.url {
-        webView.load(URLRequest(url: newURL))
-      }
-      pendingRoute = nil
-      pendingRouteUrlObservation?.invalidate()
-      pendingRouteUrlObservation = nil
-    } else if pendingRouteUrlObservation == nil {
-      pendingRouteUrlObservation = webView.observe(\.url, options: .new) { [weak self] _, _ in
-        DispatchQueue.main.async { self?.applyPendingRouteIfNeeded() }
       }
     }
   }
@@ -268,7 +229,8 @@ public class NotificationHandler: NSObject, NotificationHandlerProtocol {
       sound: notificationRequest?.sound ?? "",
       actionTypeId: request.content.categoryIdentifier,
       attachments: notificationRequest?.attachments,
-      group: threadIdentifier.isEmpty ? nil : threadIdentifier
+      group: threadIdentifier.isEmpty ? nil : threadIdentifier,
+      route: request.content.userInfo[NOTIFICATION_ROUTE_USER_INFO_KEY] as? String
     )
   }
 
@@ -295,6 +257,7 @@ struct ActiveNotification: Encodable {
   let actionTypeId: String
   let attachments: [NotificationAttachment]?
   let group: String?
+  let route: String?
 }
 
 struct ReceivedNotification: Encodable {
