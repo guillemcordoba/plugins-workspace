@@ -60,9 +60,6 @@ class TauriNotificationManager(
     }
     val dataJson = JSObject()
     dataJson.put("inputValue", tap.inputValue)
-    dismissVisibleNotification(tap.notificationId)
-    dataJson.put("notificationId", tap.notificationId)
-    dataJson.put("actionId", tap.actionId)
     var request: JSONObject? = null
     try {
       if (tap.sourceJson != null) {
@@ -70,6 +67,12 @@ class TauriNotificationManager(
       }
     } catch (_: JSONException) {
     }
+    // Cancelling a bundle's summary would take every notification in it along.
+    if (request?.optBoolean("groupSummary") != true) {
+      dismissVisibleNotification(tap.notificationId)
+    }
+    dataJson.put("notificationId", tap.notificationId)
+    dataJson.put("actionId", tap.actionId)
     dataJson.put("notification", request)
     sweepChildlessSummaries(context, setOf(tap.notificationId))
     return dataJson
@@ -168,12 +171,31 @@ class TauriNotificationManager(
     // SystemUI only makes a notification row tappable when it has a content
     // intent, so without one a collapsed bundle (lock screen, or several
     // conversations in the shade) ignores taps.
-    context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
-      builder.setContentIntent(
-        PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE)
-      )
-    }
+    builder.setContentIntent(summaryTapIntent(group))
     notificationManager.notify(group.hashCode(), builder.build())
+  }
+
+  /// A bundle holds notifications for different routes, so a tap on it takes
+  /// the regular tap path to the app's root route.
+  private fun summaryTapIntent(group: String): PendingIntent {
+    val summary = Notification()
+    summary.id = group.hashCode()
+    summary.sourceJson = JSONObject()
+      .put("id", summary.id)
+      .put("group", group)
+      .put("groupSummary", true)
+      .put("route", "/")
+      .toString()
+    var flags = PendingIntent.FLAG_CANCEL_CURRENT
+    if (SDK_INT >= Build.VERSION_CODES.S) {
+      flags = flags or PendingIntent.FLAG_IMMUTABLE
+    }
+    return PendingIntent.getActivity(
+      context,
+      summary.id,
+      buildIntent(summary, DEFAULT_PRESS_ACTION),
+      flags
+    )
   }
 
   /**
