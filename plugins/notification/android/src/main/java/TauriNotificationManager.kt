@@ -165,6 +165,14 @@ class TauriNotificationManager(
       } catch (_: IllegalArgumentException) {
       }
     }
+    // SystemUI only makes a notification row tappable when it has a content
+    // intent, so without one a collapsed bundle (lock screen, or several
+    // conversations in the shade) ignores taps.
+    context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
+      builder.setContentIntent(
+        PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE)
+      )
+    }
     notificationManager.notify(group.hashCode(), builder.build())
   }
 
