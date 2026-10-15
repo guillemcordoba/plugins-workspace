@@ -148,7 +148,36 @@ fn modify_android_sources() {
     }
 }
 
+#[cfg(feature = "push-notifications-fcm")]
+#[path = "build/ios_service_extension.rs"]
+mod ios_service_extension;
+
+#[cfg(feature = "push-notifications-fcm")]
+fn ensure_ios_service_extension() {
+    let (Some(project_dir), Ok(app_name)) = (
+        std::env::var_os("TAURI_IOS_PROJECT_PATH").map(PathBuf::from),
+        std::env::var("TAURI_IOS_APP_NAME"),
+    ) else {
+        return;
+    };
+    println!(
+        "cargo:rerun-if-changed={}",
+        project_dir
+            .join(format!("{app_name}.xcodeproj"))
+            .join("project.pbxproj")
+            .display()
+    );
+    if let Err(err) = ios_service_extension::ensure(&project_dir, &app_name) {
+        println!("cargo:warning=Could not add the push notification extension: {err}");
+    }
+}
+
 fn main() {
+    #[cfg(feature = "push-notifications-fcm")]
+    if std::env::var("TARGET").unwrap().contains("apple-ios") {
+        ensure_ios_service_extension();
+    }
+
     let mut android_path = String::from("android");
 
     #[cfg(feature = "push-notifications-fcm")]

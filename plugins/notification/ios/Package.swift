@@ -16,7 +16,7 @@ let package = Package(
     .library(
       name: "tauri-plugin-notification",
       type: .static,
-      targets: ["tauri-plugin-notification"])
+      targets: ["tauri-plugin-notification", "TauriNotificationService"])
   ],
   dependencies: [
     .package(name: "Tauri", path: "../.tauri/tauri-api"),
@@ -31,6 +31,13 @@ let package = Package(
         .byName(name: "Tauri"),
         .product(name: "FirebaseMessaging", package: "Firebase"),
       ],
-      path: "Sources")
+      path: "Sources"),
+    .target(
+      name: "TauriNotificationService",
+      dependencies: ["TauriNotificationServiceFFI"],
+      path: "ServiceExtension/TauriNotificationService"),
+    .target(
+      name: "TauriNotificationServiceFFI",
+      path: "ServiceExtension/TauriNotificationServiceFFI"),
   ]
 )

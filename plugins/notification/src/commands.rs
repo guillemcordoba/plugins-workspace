@@ -46,4 +46,3 @@ pub(crate) fn get_launching_notification_action<R: Runtime>(
 ) -> Option<crate::NotificationActionPerformedPayload> {
     notification.get_launching_notification_action()
 }
-

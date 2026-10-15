@@ -253,7 +253,10 @@ impl<R: Runtime> Notification<R> {
 
     #[cfg(feature = "push-notifications-fcm")]
     pub fn get_launching_notification_action(&self) -> Option<NotificationActionPerformedPayload> {
-        let payload = self.0.app().try_state::<NotificationActionPerformedPayload>()?;
+        let payload = self
+            .0
+            .app()
+            .try_state::<NotificationActionPerformedPayload>()?;
         Some(payload.inner().to_owned())
     }
 }

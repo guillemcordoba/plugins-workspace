@@ -27,6 +27,10 @@ pub use tauri_plugin_notification_models::*;
 #[cfg(target_os = "android")]
 pub use ndk_context;
 
+#[cfg(target_os = "ios")]
+#[doc(hidden)]
+pub mod ios_push_extension;
+
 #[cfg(desktop)]
 mod desktop;
 #[cfg(mobile)]
@@ -47,7 +51,7 @@ pub use mobile::Notification;
 
 #[derive(Debug)]
 pub struct ReceivePushNotificationContext {
-    pub data_dir: std::path::PathBuf
+    pub data_dir: std::path::PathBuf,
 }
 
 /// The notification builder.

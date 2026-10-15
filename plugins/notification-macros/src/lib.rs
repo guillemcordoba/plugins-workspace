@@ -79,112 +79,18 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         // }
 
         #[cfg(target_os = "ios")]
-        #[repr(C)]
-        pub struct RustByteSlice {
-            pub bytes: *const u8,
-            pub len: usize,
-        }
-        #[cfg(target_os = "ios")]
-        impl RustByteSlice {
-            fn as_str(&self) -> &str {
-                unsafe {
-                    // from_utf8_unchecked is sound because we checked in the constructor
-                    std::str::from_utf8_unchecked(std::slice::from_raw_parts(self.bytes, self.len))
-                }
-            }
-        }
-        #[cfg(target_os = "ios")]
-        impl<'a> From<&'a str> for RustByteSlice {
-            fn from(s: &'a str) -> Self {
-                RustByteSlice{
-                    bytes: s.as_ptr(),
-                    len: s.len() as usize,
-                }
-            }
-        }
-        #[cfg(target_os = "ios")]
         #[no_mangle]
-        pub unsafe extern "C" fn notification_destroy(data: *mut tauri_plugin_notification::NotificationData) {
-            let _ = Box::from_raw(data);
+        pub unsafe extern "C" fn tauri_plugin_notification_receive_push(
+            notification: *const ::std::ffi::c_char,
+            data_dir: *const ::std::ffi::c_char,
+        ) -> *mut ::std::ffi::c_char {
+            tauri_plugin_notification::ios_push_extension::receive(notification, data_dir, #fn_name)
         }
-        #[cfg(target_os = "ios")]
-        #[no_mangle]
-        pub unsafe extern "C" fn notification_title(data: *const tauri_plugin_notification::NotificationData) -> RustByteSlice {
-            let named_data = &*data;
-            match &named_data.title {
-                Some(b) => RustByteSlice::from(b.as_ref()),
-                None => RustByteSlice::from("")
-            }
-        }
-        #[cfg(target_os = "ios")]
-        #[no_mangle]
-        pub unsafe extern "C" fn notification_body(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
-            let named_data = &*data;
-            match &named_data.body {
-                Some(b) => RustByteSlice::from(b.as_ref()),
-                None => RustByteSlice::from("")
-            }
-        }
-        #[cfg(target_os = "ios")]
-        #[no_mangle]
-        pub unsafe extern "C" fn notification_id(data: *const ::tauri_plugin_notification::NotificationData) -> i32 {
-            let named_data = &*data;
-            named_data.id
-        }
-        #[cfg(target_os = "ios")]
-        #[no_mangle]
-        pub unsafe extern "C" fn notification_route(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
-            let named_data = &*data;
-            match &named_data.route {
-                Some(s) => RustByteSlice::from(s.as_ref()),
-                None => RustByteSlice::from("")
-            }
-        }
-        #[cfg(target_os = "ios")]
-        #[no_mangle]
-        pub unsafe extern "C" fn notification_large_icon_bytes(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
-            let named_data = &*data;
-            match &named_data.large_icon_bytes {
-                Some(s) => RustByteSlice::from(s.as_ref()),
-                None => RustByteSlice::from("")
-            }
-        }
-        #[cfg(target_os = "ios")]
-        #[no_mangle]
-        pub unsafe extern "C" fn notification_conversation_sender_id(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
-            let named_data = &*data;
-            match named_data.conversation_style.as_ref().and_then(|m| m.sender_id.as_ref()) {
-                Some(s) => RustByteSlice::from(s.as_ref()),
-                None => RustByteSlice::from("")
-            }
-        }
-        #[cfg(target_os = "ios")]
-        #[no_mangle]
-        pub unsafe extern "C" fn notification_conversation_title(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
-            let named_data = &*data;
-            match named_data.conversation_style.as_ref().and_then(|m| m.conversation_title.as_ref()) {
-                Some(s) => RustByteSlice::from(s.as_ref()),
-                None => RustByteSlice::from("")
-            }
-        }
-        #[cfg(target_os = "ios")]
-        #[no_mangle]
-        pub unsafe extern "C" fn receive_notification(
-            notification_str: RustByteSlice,
-            data_dir_str: RustByteSlice,
-        ) -> *mut tauri_plugin_notification::NotificationData {
-            let notification: tauri_plugin_notification::NotificationData = serde_json::from_str(notification_str.as_str()).unwrap();
 
-            let data_dir = std::path::PathBuf::from(data_dir_str.as_str());
-            let context = tauri_plugin_notification::ReceivePushNotificationContext { data_dir };
-
-            let new_notification = match #fn_name(notification, context) {
-                Some(n) => n,
-                None => tauri_plugin_notification::NotificationData::default()
-            };
-
-            let boxed_data = Box::new(new_notification);
-            Box::into_raw(boxed_data)
+        #[cfg(target_os = "ios")]
+        #[no_mangle]
+        pub unsafe extern "C" fn tauri_plugin_notification_free_push(json: *mut ::std::ffi::c_char) {
+            tauri_plugin_notification::ios_push_extension::free(json)
         }
 
         #input
