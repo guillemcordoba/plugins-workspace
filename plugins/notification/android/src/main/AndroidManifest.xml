@@ -16,6 +16,11 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name=".FetchingPushNotificationForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="remoteMessaging" />
+
         <activity
             android:name="app.tauri.notification.NotificationTapActivity"
             android:excludeFromRecents="true"
@@ -40,4 +45,6 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
 </manifest>

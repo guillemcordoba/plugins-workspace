@@ -7,6 +7,7 @@ import com.google.firebase.messaging.RemoteMessage
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Channel
 import com.fasterxml.jackson.module.kotlin.jsonMapper
+import java.util.concurrent.Executors
 
 class PushNotificationsService(): FirebaseMessagingService()  {
 
@@ -15,6 +16,12 @@ class PushNotificationsService(): FirebaseMessagingService()  {
             System.loadLibrary("tauri_app_lib")
         }
         var contextInitialized: Boolean = false
+
+        /** One push at a time, off the FCM thread: FCM hands over the next
+         *  message only once onMessageReceived returns, and may destroy this
+         *  service right after. After Signal's FcmFetchManager. */
+        private val EXECUTOR = Executors.newSingleThreadExecutor()
+        private var activeCount = 0
     }
 
     /**
@@ -35,7 +42,30 @@ class PushNotificationsService(): FirebaseMessagingService()  {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-        Log.i("PushNotificationService ", "Message :: $message")
+        Log.i("PushNotificationService ", "Message :: $message, priority ${message.priority}")
+
+        // Only a high-priority message lets a background app start a
+        // foreground service.
+        val context = applicationContext
+        if (message.priority == RemoteMessage.PRIORITY_HIGH) {
+            FetchingPushNotificationForegroundService.startIfNecessary(context)
+        }
+        synchronized(PushNotificationsService) { activeCount++ }
+        EXECUTOR.execute {
+            try {
+                showNotificationFor(context, message)
+            } finally {
+                synchronized(PushNotificationsService) {
+                    activeCount--
+                    if (activeCount <= 0) {
+                        FetchingPushNotificationForegroundService.stopIfNecessary(context)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showNotificationFor(context: Context, message: RemoteMessage) {
 
         val data = JSObject()
 
@@ -43,15 +73,15 @@ class PushNotificationsService(): FirebaseMessagingService()  {
             data.put(entry.key, entry.value)
         }
 
-        val notificationStorage = NotificationStorage(this, jsonMapper())
+        val notificationStorage = NotificationStorage(context, jsonMapper())
         val manager = TauriNotificationManager(
           notificationStorage,
-          this,
+          context,
           null
         )
 
         val d = data.toString()
-        val dataDir = this.getApplicationInfo().dataDir 
+        val dataDir = context.getApplicationInfo().dataDir 
 
         val notification = receivepushnotification(d, dataDir)
         Log.i("PushNotificationService ", "data:: $d")

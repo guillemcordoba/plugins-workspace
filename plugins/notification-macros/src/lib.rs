@@ -192,3 +192,49 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
 
     TokenStream::from(expanded)
 }
+
+/// Marks the function that gives the notification Android requires of the
+/// foreground service that fronts a push while the app handles it:
+/// `fn(ReceivePushNotificationContext) -> NotificationData`. Only its title is
+/// shown; the service falls back to English when it is missing.
+#[proc_macro_attribute]
+pub fn fetching_push_notification_data(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ItemFn);
+    let fn_name = input.sig.ident.clone();
+
+    let expanded = quote! {
+        #[cfg(target_os = "android")]
+        tauri::wry::prelude::android_fn!(
+            app_tauri,
+            notification,
+            FetchingPushNotificationForegroundService,
+            fetchingpushnotificationdata,
+            [jni::objects::JString<'local>],
+            jni::objects::JString<'local>,
+            [#fn_name]
+        );
+
+        #[cfg(target_os = "android")]
+        unsafe fn fetchingpushnotificationdata<'local>(
+            mut env: jni::JNIEnv<'local>,
+            _class: jni::objects::JClass<'local>,
+            jdata_dir: jni::objects::JString<'local>,
+            main: fn(tauri_plugin_notification::ReceivePushNotificationContext) -> tauri_plugin_notification::NotificationData,
+        ) -> jni::objects::JString<'local> {
+            let data_dir: String = env
+                .get_string(&jdata_dir)
+                .expect("Couldn't get java string!")
+                .into();
+            let context = tauri_plugin_notification::ReceivePushNotificationContext {
+                data_dir: std::path::PathBuf::from(data_dir.as_str()),
+            };
+            let notification = main(context);
+            env.new_string(serde_json::to_string(&notification).expect("Can't serialize NotificationData"))
+                .expect("Couldn't reserve new string")
+        }
+
+        #input
+    };
+
+    TokenStream::from(expanded)
+}
