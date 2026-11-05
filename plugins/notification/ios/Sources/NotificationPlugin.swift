@@ -78,6 +78,12 @@ struct ConversationStyle: Decodable {
   /// Group conversation name surfaced via
   /// `INSendMessageIntent.speakableGroupName`. Unset for 1:1 chats.
   var conversationTitle: String?
+  /// How many people besides the current user are in the group. Falls back
+  /// to 1, since iOS ignores `conversationTitle` without any recipients.
+  var recipientCount: Int?
+  /// Base64-encoded conversation avatar (optional `data:image/...;base64,`
+  /// prefix), which takes the avatar slot from the sender's.
+  var conversationIconBytes: String?
 }
 
 struct NotificationPluginConfig: Decodable {

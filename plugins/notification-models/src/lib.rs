@@ -271,7 +271,9 @@ pub struct ConversationStyle {
     /// messages from the same sender — even within the same group thread —
     /// are attributed to one person identity. Falls back to the notification's
     /// `route` when unset, which is correct for direct chats but collapses
-    /// different senders in groups.
+    /// different senders in groups. On iOS, a notification without one is not
+    /// donated to the system, so a sender the app cannot identify yet is not
+    /// learned as a contact.
     #[serde(default)]
     pub sender_id: Option<String>,
     /// When set, marks the notification as a group conversation: on Android
@@ -283,6 +285,20 @@ pub struct ConversationStyle {
     /// in Communication Notifications. Leave `None` for direct chats.
     #[serde(default)]
     pub conversation_title: Option<String>,
+    /// How many people besides the current user are in the group. iOS only
+    /// shows `conversation_title` when it knows a message has recipients, so
+    /// it falls back to 1 when this is unset; the real count also feeds the
+    /// system's donation data (`INSendMessageIntentDonationMetadata`). Android
+    /// has no use for it. Ignored unless `conversation_title` is set.
+    #[serde(default)]
+    pub recipient_count: Option<u32>,
+    /// The conversation's own avatar, as base64-encoded image bytes (optional
+    /// `data:image/...;base64,` prefix), alongside the sender's in
+    /// `large_icon_bytes`. On Android, the notification's large icon. On iOS 15+,
+    /// takes the avatar slot from the sender's. Ignored unless
+    /// `conversation_title` is set.
+    #[serde(default)]
+    pub conversation_icon_bytes: Option<String>,
 }
 
 fn default_id() -> i32 {

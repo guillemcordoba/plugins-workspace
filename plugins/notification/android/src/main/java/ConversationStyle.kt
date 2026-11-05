@@ -27,4 +27,13 @@ class ConversationStyle {
   /// expanded view stacks each sender's row with their own display name.
   /// Leave null for direct chats.
   var conversationTitle: String? = null
+
+  /// How many people besides the current user are in the group. iOS only:
+  /// `MessagingStyle` has no use for it.
+  var recipientCount: Int? = null
+
+  /// The conversation's own avatar (base64, optional `data:image/...;base64,`
+  /// prefix), used as the notification's large icon. Each message keeps its
+  /// sender's icon from [Notification.largeIconBytes].
+  var conversationIconBytes: String? = null
 }

@@ -93,9 +93,8 @@ func makeNotificationContent(_ notification: Notification, pluginConfig: Notific
   if #available(iOS 15.0, *),
      notification.conversationStyle != nil,
      let route = notification.route, !route.isEmpty,
-     let body = notification.body, !body.isEmpty,
-     let iconBytes = notification.largeIconBytes, !iconBytes.isEmpty,
-     let avatarData = decodeBase64DataURL(iconBytes) {
+     let body = notification.body, !body.isEmpty {
+    let avatarData = notification.largeIconBytes.flatMap(decodeBase64DataURL)
     let senderHandle = notification.conversationStyle?.senderId?.nilIfEmpty ?? route
     let conversationTitle = notification.conversationStyle?.conversationTitle?.nilIfEmpty
     if let updated = communicationNotificationContent(
@@ -105,7 +104,11 @@ func makeNotificationContent(_ notification: Notification, pluginConfig: Notific
       displayName: notification.title,
       body: body,
       avatarData: avatarData,
-      conversationTitle: conversationTitle
+      conversationTitle: conversationTitle,
+      recipientCount: notification.conversationStyle?.recipientCount ?? 0,
+      conversationIconData: notification.conversationStyle?.conversationIconBytes
+        .flatMap(decodeBase64DataURL),
+      donate: notification.conversationStyle?.senderId?.nilIfEmpty != nil
     ) {
       return updated
     }
@@ -142,10 +145,13 @@ private func communicationNotificationContent(
   conversationId: String,
   displayName: String,
   body: String,
-  avatarData: Data,
-  conversationTitle: String?
+  avatarData: Data?,
+  conversationTitle: String?,
+  recipientCount: Int,
+  conversationIconData: Data?,
+  donate: Bool
 ) -> UNNotificationContent? {
-  let avatar = INImage(imageData: avatarData)
+  let avatar = avatarData.map { INImage(imageData: $0) }
   let handle = INPersonHandle(value: senderHandle, type: .unknown)
   let sender = INPerson(
     personHandle: handle,
@@ -169,10 +175,19 @@ private func communicationNotificationContent(
     sender: sender,
     attachments: nil
   )
+  // iOS ignores `speakableGroupName` unless told there are recipients.
+  if speakableGroupName != nil {
+    let metadata = INSendMessageIntentDonationMetadata()
+    metadata.recipientCount = max(recipientCount, 1)
+    intent.donationMetadata = metadata
+    if let conversationIconData {
+      intent.setImage(INImage(imageData: conversationIconData), forParameterNamed: \.speakableGroupName)
+    }
+  }
 
   let interaction = INInteraction(intent: intent, response: nil)
   interaction.direction = .incoming
-  interaction.donate(completion: nil)
+  if donate { interaction.donate(completion: nil) }
 
   // `updating(from:)` returns fresh content derived from the intent and
   // doesn't always carry the base's sound through; re-pin it on the

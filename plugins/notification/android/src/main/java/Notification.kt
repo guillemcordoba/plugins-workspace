@@ -96,6 +96,9 @@ class Notification {
     return null
   }
 
+  fun getConversationIcon(): Bitmap? =
+    conversationStyle?.conversationIconBytes?.let { decodeBase64Bitmap(it) }
+
   private fun decodeBase64Bitmap(b64: String): Bitmap? {
     val stripped = b64.substringAfter("base64,", b64)
     return try {
