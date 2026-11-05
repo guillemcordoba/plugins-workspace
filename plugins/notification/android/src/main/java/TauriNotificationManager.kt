@@ -24,6 +24,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
 import androidx.core.app.RemoteInput
+import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import app.tauri.Logger
 import app.tauri.plugin.JSObject
@@ -203,19 +205,7 @@ class TauriNotificationManager(
    * existing notification at this id (if any) and appending the new message.
    * Requires the consumer to use a stable id per conversation.
    */
-  private fun buildMessagingStyle(notification: Notification): NotificationCompat.MessagingStyle {
-    val senderBuilder = Person.Builder().setName(notification.title ?: " ")
-    notification.getLargeIcon(context)?.let { bitmap ->
-      senderBuilder.setIcon(IconCompat.createWithBitmap(bitmap))
-    }
-    // Use a stable sender key so successive messages from the same sender —
-    // even within the same group thread — attribute to one Person identity.
-    // Falls back to the route for direct chats (where there is only one peer).
-    val senderKey = notification.conversationStyle?.senderId ?: notification.route
-    if (senderKey != null) {
-      senderBuilder.setKey(senderKey)
-    }
-    val sender = senderBuilder.build()
+  private fun buildMessagingStyle(notification: Notification, sender: Person): NotificationCompat.MessagingStyle {
     // AndroidX rejects an empty name; consumer can override by posting their
     // own MessagingStyle. Self is invisible unless we add user-sent messages.
     val selfPerson = Person.Builder().setName(" ").build()
@@ -231,6 +221,62 @@ class TauriNotificationManager(
       style.isGroupConversation = true
     }
     return style
+  }
+
+  private fun senderPerson(notification: Notification): Person {
+    val senderBuilder = Person.Builder().setName(notification.title ?: " ")
+    notification.getLargeIcon(context)?.let { bitmap ->
+      senderBuilder.setIcon(IconCompat.createWithBitmap(bitmap))
+    }
+    // Use a stable sender key so successive messages from the same sender —
+    // even within the same group thread — attribute to one Person identity.
+    // Falls back to the route for direct chats (where there is only one peer).
+    val senderKey = notification.conversationStyle?.senderId ?: notification.route
+    if (senderKey != null) {
+      senderBuilder.setKey(senderKey)
+    }
+    return senderBuilder.build()
+  }
+
+  /**
+   * Publish the long-lived shortcut Android requires before it treats a
+   * MessagingStyle notification as a conversation: without one the shade
+   * draws the last sender in place of the conversation's avatar. Null when
+   * the launcher refused it, which leaves an ordinary MessagingStyle
+   * notification.
+   */
+  private fun pushConversationShortcut(notification: Notification, sender: Person): ShortcutInfoCompat? {
+    val groupTitle = notification.conversationStyle?.conversationTitle
+    val builder = ShortcutInfoCompat.Builder(context, "conversation-${notification.id}")
+      .setShortLabel(groupTitle ?: notification.title ?: " ")
+      .setLongLived(true)
+      .setIntent(conversationShortcutIntent(notification))
+    (notification.conversationIconBitmap() ?: notification.getLargeIcon(context))?.let { bitmap ->
+      builder.setIcon(IconCompat.createWithBitmap(bitmap))
+    }
+    if (groupTitle == null) {
+      builder.setPerson(sender)
+    }
+    val shortcut = builder.build()
+    return try {
+      ShortcutManagerCompat.pushDynamicShortcut(context, shortcut)
+      shortcut
+    } catch (e: Exception) {
+      Logger.error(Logger.tags("Notification"), "Failed to publish the conversation shortcut", e)
+      null
+    }
+  }
+
+  /** Taps through like the notification, without persisting its icons in
+   *  the shortcut. */
+  private fun conversationShortcutIntent(notification: Notification): Intent {
+    val conversation = Notification()
+    conversation.id = notification.id
+    conversation.sourceJson = JSONObject()
+      .put("id", notification.id)
+      .put("route", notification.route)
+      .toString()
+    return buildIntent(conversation, DEFAULT_PRESS_ACTION).setAction(Intent.ACTION_VIEW)
   }
 
   private fun getActiveNotificationById(id: Int): android.app.Notification? {
@@ -279,7 +325,9 @@ class TauriNotificationManager(
       .setPriority(NotificationCompat.PRIORITY_DEFAULT)
       .setGroupSummary(notification.isGroupSummary)
     if (notification.conversationStyle != null) {
-      mBuilder.setStyle(buildMessagingStyle(notification))
+      val sender = senderPerson(notification)
+      mBuilder.setStyle(buildMessagingStyle(notification, sender))
+      pushConversationShortcut(notification, sender)?.let { mBuilder.setShortcutInfo(it) }
     } else if (notification.largeBody != null) {
       // support multiline text
       mBuilder.setStyle(
