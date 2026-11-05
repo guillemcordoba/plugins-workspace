@@ -319,7 +319,7 @@ class TauriNotificationManager(
     }
     mBuilder.setVisibility(notification.visibility ?: NotificationCompat.VISIBILITY_PRIVATE)
     mBuilder.setSmallIcon(notification.getSmallIcon(context, getDefaultSmallIcon(context)))
-    mBuilder.setLargeIcon(notification.getConversationIcon() ?: notification.getLargeIcon(context))
+    mBuilder.setLargeIcon(notification.conversationIconBitmap() ?: notification.getLargeIcon(context))
     val iconColor = notification.getIconColor(config?.iconColor ?: "")
     if (iconColor.isNotEmpty()) {
       try {

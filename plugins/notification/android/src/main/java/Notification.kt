@@ -96,7 +96,7 @@ class Notification {
     return null
   }
 
-  fun getConversationIcon(): Bitmap? =
+  fun conversationIconBitmap(): Bitmap? =
     conversationStyle?.conversationIconBytes?.let { decodeBase64Bitmap(it) }
 
   private fun decodeBase64Bitmap(b64: String): Bitmap? {
