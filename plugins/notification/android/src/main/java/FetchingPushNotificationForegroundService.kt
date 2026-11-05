@@ -152,9 +152,10 @@ class FetchingPushNotificationForegroundService : Service() {
         NotificationChannel(CHANNEL_ID, DEFAULT_TITLE, NotificationManager.IMPORTANCE_MIN)
       )
     }
+    val fromApp = notificationFromApp()
     val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-      .setSmallIcon(applicationInfo.icon)
-      .setContentTitle(title())
+      .setSmallIcon(fromApp?.getSmallIcon(this, applicationInfo.icon) ?: applicationInfo.icon)
+      .setContentTitle(fromApp?.title?.takeUnless { it.isBlank() } ?: DEFAULT_TITLE)
       .setCategory(NotificationCompat.CATEGORY_SERVICE)
       .setProgress(0, 0, true)
       .setSilent(true)
@@ -166,17 +167,14 @@ class FetchingPushNotificationForegroundService : Service() {
     }
   }
 
-  /** The title the app localizes, or the English one when the app gives none. */
-  private fun title(): String {
-    val title = try {
+  private fun notificationFromApp(): Notification? =
+    try {
       val json = fetchingpushnotificationdata(applicationInfo.dataDir)
-      jsonMapper().readValue(json, Notification::class.java).title
+      jsonMapper().readValue(json, Notification::class.java)
     } catch (e: Throwable) {
-      Log.w(TAG, "The app gave no title for the foreground notification", e)
+      Log.w(TAG, "The app gave no data for the foreground notification", e)
       null
     }
-    return if (title.isNullOrBlank()) DEFAULT_TITLE else title
-  }
 
   private external fun fetchingpushnotificationdata(dataDir: String): String
 
