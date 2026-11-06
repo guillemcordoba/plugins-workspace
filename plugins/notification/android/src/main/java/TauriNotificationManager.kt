@@ -470,10 +470,25 @@ class TauriNotificationManager(
     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
     intent.putExtra(NOTIFICATION_INTENT_KEY, notification.id)
     intent.putExtra(ACTION_INTENT_KEY, action)
-    intent.putExtra(NOTIFICATION_OBJ_INTENT_KEY, notification.sourceJson)
+    intent.putExtra(NOTIFICATION_OBJ_INTENT_KEY, withoutIconBytes(notification.sourceJson))
     val schedule = notification.schedule
     intent.putExtra(NOTIFICATION_IS_REMOVABLE_KEY, schedule == null || schedule.isRemovable())
     return intent
+  }
+
+  // A tap intent's extras cross binder, and two inline avatars can push them
+  // past its transaction limit: the tap is then never delivered and the app
+  // is killed. Nothing reads the icons back from a tap.
+  private fun withoutIconBytes(sourceJson: String?): String? {
+    if (sourceJson == null) return null
+    return try {
+      val json = JSONObject(sourceJson)
+      json.remove("largeIconBytes")
+      json.optJSONObject("conversationStyle")?.remove("conversationIconBytes")
+      json.toString()
+    } catch (_: JSONException) {
+      sourceJson
+    }
   }
 
   /**
