@@ -95,6 +95,7 @@ func makeNotificationContent(_ notification: Notification, pluginConfig: Notific
      let route = notification.route, !route.isEmpty,
      let body = notification.body, !body.isEmpty {
     let avatarData = notification.largeIconBytes.flatMap(decodeBase64DataURL)
+      ?? notification.largeIconLetterTile?.pngData()
     let senderHandle = notification.conversationStyle?.senderId?.nilIfEmpty ?? route
     let conversationTitle = notification.conversationStyle?.conversationTitle?.nilIfEmpty
     if let updated = communicationNotificationContent(

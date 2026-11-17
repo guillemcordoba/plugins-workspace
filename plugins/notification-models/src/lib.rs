@@ -231,7 +231,8 @@ pub struct NotificationData {
     pub large_icon_bytes: Option<String>,
     /// Drawn as the large icon when neither `large_icon_bytes` nor `large_icon`
     /// is set: Android otherwise gives a `MessagingStyle` sender a blank avatar.
-    /// Android only.
+    /// On iOS 15+, drawn as the Communication Notification sender avatar when
+    /// `large_icon_bytes` is unset, and never attached as a thumbnail.
     #[serde(default)]
     pub large_icon_letter_tile: Option<LetterTile>,
     pub icon_color: Option<String>,

@@ -117,6 +117,8 @@ struct Notification: Decodable {
   /// Communication Notification path as the sender's avatar; ignored on
   /// iOS < 15 or when `conversationStyle` / `route` / `body` is missing.
   var largeIconBytes: String?
+  /// Drawn as the sender's avatar when [largeIconBytes] is unset.
+  var largeIconLetterTile: LetterTile?
   /// Opt into the Communication Notification path on iOS 15+. Requires
   /// the `com.apple.developer.usernotifications.communication` entitlement
   /// on the host app. Without this field the notification renders as a

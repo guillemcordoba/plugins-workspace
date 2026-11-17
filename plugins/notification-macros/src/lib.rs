@@ -151,6 +151,33 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         }
         #[cfg(target_os = "ios")]
         #[no_mangle]
+        pub unsafe extern "C" fn notification_large_icon_letter_tile_text(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
+            let named_data = &*data;
+            match named_data.large_icon_letter_tile.as_ref().and_then(|t| t.text.as_ref()) {
+                Some(s) => RustByteSlice::from(s.as_ref()),
+                None => RustByteSlice::from("")
+            }
+        }
+        #[cfg(target_os = "ios")]
+        #[no_mangle]
+        pub unsafe extern "C" fn notification_large_icon_letter_tile_background_color(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
+            let named_data = &*data;
+            match named_data.large_icon_letter_tile.as_ref() {
+                Some(t) => RustByteSlice::from(t.background_color.as_ref()),
+                None => RustByteSlice::from("")
+            }
+        }
+        #[cfg(target_os = "ios")]
+        #[no_mangle]
+        pub unsafe extern "C" fn notification_large_icon_letter_tile_text_color(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
+            let named_data = &*data;
+            match named_data.large_icon_letter_tile.as_ref() {
+                Some(t) => RustByteSlice::from(t.text_color.as_ref()),
+                None => RustByteSlice::from("")
+            }
+        }
+        #[cfg(target_os = "ios")]
+        #[no_mangle]
         pub unsafe extern "C" fn notification_conversation_sender_id(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
             let named_data = &*data;
             match named_data.conversation_style.as_ref().and_then(|m| m.sender_id.as_ref()) {
