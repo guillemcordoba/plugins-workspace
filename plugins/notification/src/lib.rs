@@ -190,6 +190,12 @@ impl<R: Runtime> NotificationBuilder<R> {
         self
     }
 
+    /// See [`NotificationData::large_icon_letter_tile`].
+    pub fn large_icon_letter_tile(mut self, letter_tile: LetterTile) -> Self {
+        self.data.large_icon_letter_tile = Some(letter_tile);
+        self
+    }
+
     /// Icon color on Android.
     pub fn icon_color(mut self, icon_color: impl Into<String>) -> Self {
         self.data.icon_color.replace(icon_color.into());

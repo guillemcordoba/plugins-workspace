@@ -28,6 +28,8 @@ class Notification {
   /// [largeIcon]. Used for the MessagingStyle Person avatar when
   /// [conversationStyle] is non-null, otherwise for the regular large icon.
   var largeIconBytes: String? = null
+  /// Drawn as the large icon when neither [largeIconBytes] nor [largeIcon] is set.
+  var largeIconLetterTile: LetterTile? = null
   var iconColor: String? = null
   var actionTypeId: String? = null
   var group: String? = null
@@ -93,7 +95,7 @@ class Notification {
       val resId: Int = AssetUtils.getResourceID(context, largeIcon, "drawable")
       return BitmapFactory.decodeResource(context.resources, resId)
     }
-    return null
+    return largeIconLetterTile?.toBitmap(context)
   }
 
   fun conversationIconBitmap(): Bitmap? =

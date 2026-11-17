@@ -229,6 +229,11 @@ pub struct NotificationData {
     /// sender avatar (`INPerson.image`) when `conversation_style` is set
     /// and a `route` / `body` are present; ignored otherwise.
     pub large_icon_bytes: Option<String>,
+    /// Drawn as the large icon when neither `large_icon_bytes` nor `large_icon`
+    /// is set: Android otherwise gives a `MessagingStyle` sender a blank avatar.
+    /// Android only.
+    #[serde(default)]
+    pub large_icon_letter_tile: Option<LetterTile>,
     pub icon_color: Option<String>,
     #[serde(default)]
     pub attachments: Vec<Attachment>,
@@ -301,6 +306,20 @@ pub struct ConversationStyle {
     pub conversation_icon_bytes: Option<String>,
 }
 
+/// Text centred on a coloured square, like the initials avatars of contact
+/// lists, drawn with the system fonts so any script or emoji renders.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LetterTile {
+    /// A person silhouette is drawn in its place when unset or blank.
+    #[serde(default)]
+    pub text: Option<String>,
+    /// `#rrggbb`.
+    pub background_color: String,
+    /// `#rrggbb`, also the colour of the silhouette.
+    pub text_color: String,
+}
+
 fn default_id() -> i32 {
     rand::random()
 }
@@ -323,6 +342,7 @@ impl Default for NotificationData {
             icon: None,
             large_icon: None,
             large_icon_bytes: None,
+            large_icon_letter_tile: None,
             icon_color: None,
             attachments: Vec::new(),
             extra: Default::default(),
