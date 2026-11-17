@@ -18,7 +18,7 @@ private const val SIZE_PX = 192
 private const val TEXT_HEIGHT = 0.4f
 /// The system crops the icon to a circle, so wider text shrinks to stay inside it.
 private const val MAX_TEXT_WIDTH = 0.7f
-private const val SILHOUETTE_SIZE = 0.6f
+private const val SILHOUETTE_SIZE = 0.5f
 
 /// Text centred on a coloured square, drawn with the system fonts so any
 /// script or emoji renders. A person silhouette takes the place of a blank text.
