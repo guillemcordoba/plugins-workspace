@@ -89,17 +89,17 @@ class Notification {
 
   fun getLargeIcon(context: Context): Bitmap? {
     largeIconBytes?.let { b64 ->
-      decodeBase64Bitmap(b64)?.let { return it }
+      decodeBase64Bitmap(b64)?.let { return it.circleCropped() }
     }
     if (largeIcon != null) {
       val resId: Int = AssetUtils.getResourceID(context, largeIcon, "drawable")
-      return BitmapFactory.decodeResource(context.resources, resId)
+      return BitmapFactory.decodeResource(context.resources, resId)?.circleCropped()
     }
-    return largeIconLetterTile?.toBitmap()
+    return largeIconLetterTile?.toBitmap()?.circleCropped()
   }
 
   fun conversationIconBitmap(): Bitmap? =
-    conversationStyle?.conversationIconBytes?.let { decodeBase64Bitmap(it) }
+    conversationStyle?.conversationIconBytes?.let { decodeBase64Bitmap(it) }?.circleCropped()
 
   private fun decodeBase64Bitmap(b64: String): Bitmap? {
     val stripped = b64.substringAfter("base64,", b64)
