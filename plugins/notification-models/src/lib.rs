@@ -312,12 +312,10 @@ pub struct ConversationStyle {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct LetterTile {
-    /// A person silhouette is drawn in its place when unset or blank.
-    #[serde(default)]
-    pub text: Option<String>,
+    pub text: String,
     /// `#rrggbb`.
     pub background_color: String,
-    /// `#rrggbb`, also the colour of the silhouette.
+    /// `#rrggbb`.
     pub text_color: String,
 }
 

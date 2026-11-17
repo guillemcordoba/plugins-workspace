@@ -153,8 +153,8 @@ pub fn receive_push_notification(_args: TokenStream, input: TokenStream) -> Toke
         #[no_mangle]
         pub unsafe extern "C" fn notification_large_icon_letter_tile_text(data: *const ::tauri_plugin_notification::NotificationData) -> RustByteSlice {
             let named_data = &*data;
-            match named_data.large_icon_letter_tile.as_ref().and_then(|t| t.text.as_ref()) {
-                Some(s) => RustByteSlice::from(s.as_ref()),
+            match named_data.large_icon_letter_tile.as_ref() {
+                Some(t) => RustByteSlice::from(t.text.as_ref()),
                 None => RustByteSlice::from("")
             }
         }

@@ -95,7 +95,7 @@ class Notification {
       val resId: Int = AssetUtils.getResourceID(context, largeIcon, "drawable")
       return BitmapFactory.decodeResource(context.resources, resId)
     }
-    return largeIconLetterTile?.toBitmap(context)
+    return largeIconLetterTile?.toBitmap()
   }
 
   fun conversationIconBitmap(): Bitmap? =
